@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# WARNING: If using ZSH, do not attempt to load NVM bash completions here, it will fail
+NVM_DIR="$USER_INSTALL_PREFIX/nvm"
+export NVM_DIR
 
 nvm_init() {
   # Initialize NVM

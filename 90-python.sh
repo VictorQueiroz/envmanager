@@ -44,17 +44,24 @@ install_pyenv_plugins() {
     mkdir --parents --verbose "$pyenv_plugins_dir"
   fi
 
+  # In case plugins are going to be updated, use these Git arguments to do so.
+  local pyenv_update_plugin_git_command_args
+  pyenv_update_plugin_git_command_args=(
+    "-C" "$pyenv_plugins_dir/$plugin_name"
+    pull
+    --quiet
+  )
+
   local plugin_destination
   for plugin_name in "${pyenv_plugins[@]}"; do
     plugin_destination="$pyenv_plugins_dir/$plugin_name"
 
     if [ ! -d "${plugin_destination}/.git" ]; then
-      printf 'Installing %s plugin...' "$plugin_name"
+      printf 'Installing %s plugin...\n' "$plugin_name"
       git clone "${pyenv_git_repository_uri}/${plugin_name}.git" "$pyenv_plugins_dir/$plugin_name"
-    else
-      # Update the plugin repository
-      printf 'Updating %s plugin...' "$plugin_name"
-      git -C "$pyenv_plugins_dir/$plugin_name" pull
+    elif $PYENV_UPDATE_PLUGINS; then
+      # Update the plugin repository quietly
+      git "${pyenv_update_plugin_git_command_args[@]}"
     fi
   done
 }
@@ -62,9 +69,16 @@ install_pyenv_plugins() {
 compile_pyenv_bash_extension() {
   unset -f compile_pyenv_bash_extension
 
-  cd "$PYENV_ROOT" || return 1
-  src/configure || return 1
-  make || return 1
+  local config_script="$PYENV_ROOT/src/configure"
+  local make_dir="$PYENV_ROOT"
+
+  if [ ! -x "$config_script" ]; then
+    printf 'Configure script not found or not executable: %s\n' "$config_script"
+    return 1
+  fi
+
+  "$config_script" --prefix="$PYENV_ROOT" || return 1
+  make -C "$make_dir" || return 1
 }
 
 install_pyenv() {
@@ -73,35 +87,57 @@ install_pyenv() {
   local pyenv_git_repository_uri
   pyenv_git_repository_uri="https://github.com/pyenv"
 
+  # Only compile the bash extension once
+  local pyenv_compile_bash_extension
+  pyenv_compile_bash_extension=false
+
   # Clone pyenv if it's not already installed
   if [ ! -d "$PYENV_ROOT" ]; then
     printf 'Cloning pyenv into %s...' "$PYENV_ROOT"
-    git clone "$pyenv_git_repository_uri"/pyenv.git "$PYENV_ROOT" || return 1
-  fi
 
-  # Try to compile a dynamic Bash extension to speed up Pyenv. See: https://github.com/pyenv/pyenv?tab=readme-ov-file#2-basic-github-checkout
-  compile_pyenv_bash_extension || return 1
+    git clone "$pyenv_git_repository_uri"/pyenv.git "$PYENV_ROOT" || return 1
+
+    pyenv_compile_bash_extension=true
+  fi
 
   # Install plugins
   install_pyenv_plugins "$pyenv_git_repository_uri" || return 1
 
-  # Load pyenv
+  # Load `pyenv` into the current shell
+  load_pyenv
+
+  # Try to compile a dynamic Bash extension to speed up Pyenv.
+  # See: https://github.com/pyenv/pyenv?tab=readme-ov-file#2-basic-github-checkout
+  # This needs to specifically be done after `load_pyenv` is executed.
+  if $pyenv_compile_bash_extension; then
+    compile_pyenv_bash_extension
+  fi
+}
+
+load_pyenv() {
+  unset -f load_pyenv
+
+  # Add `$PYENV_ROOT/bin` to `$PATH`
   if [ -d "$PYENV_ROOT"/bin ]; then
     PATH="$PYENV_ROOT/bin:$PATH"
     export PATH
   fi
 
-  SHELL_NAME="$(basename "$SHELL")"
-
-  if [ "$SHELL_NAME" = "zsh" ]; then
-    pyenv_shell="zsh"
-  elif [ "$SHELL_NAME" = "bash" ]; then
-    pyenv_shell="bash"
+  # If `SHELL` is not set, just run `pyenv init -`
+  if [ -z "$SHELL" ]; then
+    eval "$(pyenv init -)"
+    return 0
   fi
 
-  eval "$(pyenv init - "$pyenv_shell")"
+  local shell_name
+  shell_name="$(basename "$SHELL")"
+
+  eval "$(pyenv init - "$shell_name")"
+
+  source "${PYENV_ROOT}/completions/pyenv.${shell_name}"
 }
 
+# Set the `PYENV_ROOT` environment variable
 PYENV_ROOT="$HOME/.pyenv"
 export PYENV_ROOT
 

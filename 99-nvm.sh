@@ -1,22 +1,32 @@
 #!/bin/bash
 
-# Initialize NVM
-export NVM_DIR="${XDG_CONFIG_HOME}/nvm"
-
 # WARNING: If using ZSH, do not attempt to load NVM bash completions here, it will fail
+
 nvm_init() {
+  # Initialize NVM
+  if [[ -z "$NVM_DIR" ]]; then
+    printf 'NVM_DIR must be defined\n'
+    return 1
+  fi
+
   # Unset this function, we only need to run it once
   unset -f nvm_init
 
   # If NVM folder does not exist, install it
-  if [ ! -d "$NVM_DIR" ]; then
+  if [ ! -s "${NVM_DIR}/nvm.sh" ]; then
     # Get the latest NVM version from GitHub
-    local NVM_VERSION_LATEST="$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -r .tag_name | sed 's/^v//')"
+    local NVM_VERSION_LATEST
+    NVM_VERSION_LATEST="$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -r .tag_name | sed 's/^v//')"
+
     nvm_install "$NVM_VERSION_LATEST" || return 1
   fi
 
   # Load NVM
-  [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    source "$NVM_DIR/nvm.sh"
+  else
+    printf 'Failed to load NVM\n'
+  fi
 }
 
 nvm_install() {
@@ -56,11 +66,11 @@ nvm_install() {
     "NVM_DOWNLOAD_URL=$NVM_DOWNLOAD_URL"
   )
 
+  # Create NVM_DIR
+  mkdir --parents --verbose "${NVM_DIR}"
+
   env "${env_args[@]}" "${install_nvm_bash_args[@]}"
 }
-
-# Unset NODE_PATH just in case
-unset NODE_PATH
 
 # Creates `js` alias to run node with NODE_PATH set to global npm modules
 js() {
@@ -68,8 +78,13 @@ js() {
 }
 
 nvm_man() {
-  env MAN=$(which man) MANPATH="$MAN_PATH:$NVM_DIR/versions/node/$(node -v)/share" \
-    $SHELL -l -c "\$MAN $@"
+  local env_args=(
+    "MANPATH='$MAN_PATH:$NVM_DIR/versions/node/$(node -v)/share'"
+  )
+  "${env_args[@]}" man "$@"
 }
 
 nvm_init
+
+# Unset NODE_PATH just in case
+unset NODE_PATH

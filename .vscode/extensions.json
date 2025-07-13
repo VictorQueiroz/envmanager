@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "foxundermoon.shell-format",
+    "timonwong.shellcheck",
+    "jeff-hykin.better-shellscript-syntax"
+  ]
+}

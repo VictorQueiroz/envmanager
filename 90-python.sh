@@ -110,7 +110,7 @@ install_pyenv() {
   # See: https://github.com/pyenv/pyenv?tab=readme-ov-file#2-basic-github-checkout
   # This needs to specifically be done after `load_pyenv` is executed.
   if $pyenv_compile_bash_extension; then
-    compile_pyenv_bash_extension
+    compile_pyenv_bash_extension || true
   fi
 }
 

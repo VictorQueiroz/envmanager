@@ -84,24 +84,24 @@ compile_pyenv_bash_extension() {
 install_pyenv() {
   unset -f install_pyenv
 
-  local pyenv_git_repository_uri
-  pyenv_git_repository_uri="https://github.com/pyenv"
-
   # Only compile the bash extension once
   local pyenv_compile_bash_extension
   pyenv_compile_bash_extension=false
 
   # Clone pyenv if it's not already installed
   if [ ! -d "$PYENV_ROOT" ]; then
+    local pyenv_git_repository_uri
+    pyenv_git_repository_uri="https://github.com/pyenv"
+
     printf 'Cloning pyenv into %s...' "$PYENV_ROOT"
 
     git clone "$pyenv_git_repository_uri"/pyenv.git "$PYENV_ROOT" || return 1
 
     pyenv_compile_bash_extension=true
-  fi
 
-  # Install plugins
-  install_pyenv_plugins "$pyenv_git_repository_uri" || return 1
+    # Install plugins
+    install_pyenv_plugins "$pyenv_git_repository_uri" || return 1
+  fi
 
   # Load `pyenv` into the current shell
   load_pyenv
@@ -142,4 +142,4 @@ PYENV_ROOT="$USER_INSTALL_PREFIX/pyenv"
 export PYENV_ROOT
 
 # Install pyenv and friends if it's not already installed
-install_pyenv
+install_pyenv || return 1

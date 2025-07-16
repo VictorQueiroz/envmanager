@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NVM_DIR="$USER_INSTALL_PREFIX/nvm"
+NVM_DIR="$XDG_DATA_HOME/nvm"
 export NVM_DIR
 
 nvm_init() {

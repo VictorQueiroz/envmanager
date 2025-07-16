@@ -138,7 +138,7 @@ load_pyenv() {
 }
 
 # Set the `PYENV_ROOT` environment variable
-PYENV_ROOT="$USER_INSTALL_PREFIX/pyenv"
+PYENV_ROOT="$XDG_DATA_HOME/pyenv"
 export PYENV_ROOT
 
 # Install pyenv and friends if it's not already installed

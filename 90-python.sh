@@ -36,7 +36,7 @@ install_pyenv_plugins() {
   # Unset the `PYENV_PLUGINS` environment variable
   unset -v PYENV_PLUGINS
 
-  local pyenv_plugins_dir
+  local -a pyenv_plugins_dir
   pyenv_plugins_dir="$PYENV_ROOT/plugins"
 
   # Ensure the `plugins` directory exists
@@ -117,24 +117,16 @@ install_pyenv() {
 load_pyenv() {
   unset -f load_pyenv
 
+  if [ ! -d "$PYENV_ROOT"/bin ]; then
+    printf 'pyenv root does not exist'
+    return 1
+  fi
+
   # Add `$PYENV_ROOT/bin` to `$PATH`
-  if [ -d "$PYENV_ROOT"/bin ]; then
-    PATH="$PYENV_ROOT/bin:$PATH"
-    export PATH
-  fi
+  PATH="$PYENV_ROOT/bin:$PATH"
+  export PATH
 
-  # If `SHELL` is not set, just run `pyenv init -`
-  if [ -z "$SHELL" ]; then
-    eval "$(pyenv init -)"
-    return 0
-  fi
-
-  local shell_name
-  shell_name="$(basename "$SHELL")"
-
-  eval "$(pyenv init - "$shell_name")"
-
-  source "${PYENV_ROOT}/completions/pyenv.${shell_name}"
+  znap function _pyenv pyenv 'eval "$(pyenv init -)"'
 }
 
 # Set the `PYENV_ROOT` environment variable

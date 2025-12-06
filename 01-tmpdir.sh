@@ -49,6 +49,6 @@ if [ -z "$TMPDIR" ]; then
 fi
 
 if [ -n "$TMPDIR" ] && [ ! -d "$TMPDIR" ]; then
-  printf '%s is set to "%s", but it does not exist. Creating it...\n' "TMPDIR" "$TMPDIR"
-  mkdir --parents --verbose "$TMPDIR"
+  mkdir --parents "$TMPDIR"
 fi
+

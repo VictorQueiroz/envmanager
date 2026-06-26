@@ -86,6 +86,18 @@
 #                           Default tmux configuration file.
 #        /etc/tmux.conf     System-wide configuration file.
 
+clone_personal_config() {
+  local tmux_config_dir="$XDG_CONFIG_HOME"/tmux
+  local tmux_config_git_repo="https://github.com/VictorQueiroz/tmux"
+
+  if [ -d "$tmux_config_dir" ]; then
+    git -C "$tmux_config_dir" fetch --quiet --all
+    git -C "$tmux_config_dir" pull --quiet --all
+  else
+    git clone --quiet "$tmux_config_git_repo" "$tmux_config_dir"
+  fi
+}
+
 set_tmux_tmpdir() {
   unset -f set_tmux_tmpdir
 
@@ -105,6 +117,7 @@ fi
 
 # If `TMUX_TMPDIR` environment variable is set, and the directory does not exist, create it
 if [ -n "$TMUX_TMPDIR" ] && [ ! -d "$TMUX_TMPDIR" ]; then
-  printf '%s is set to "%s", but it does not exist. Creating it...\n' "TMUX_TMPDIR" "$TMUX_TMPDIR"
-  mkdir --parents --verbose "$TMUX_TMPDIR"
+  mkdir --parents "$TMUX_TMPDIR"
 fi
+
+clone_personal_config

@@ -19,3 +19,7 @@ sdkman_init() {
 
 sdkman_init
 
+# Lazy load `sdkman`
+znap function _sdk sdk 'source "$SDKMAN_DIR/bin/sdkman-init.sh"'
+compdef _sdk sdk
+

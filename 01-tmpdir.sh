@@ -52,3 +52,9 @@ if [ -n "$TMPDIR" ] && [ ! -d "$TMPDIR" ]; then
   mkdir --parents "$TMPDIR"
 fi
 
+# If `SHELL` is defined, set `TMPPREFIX`
+if [ -n "$SHELL" ]; then
+  # Define TMPPREFIX (see: https://www.ibm.com/docs/en/zos/3.2.0?topic=shell-parameters#:~:text=TMPPREFIX,tmp/zsh%27.)
+  TMPPREFIX="$TMPDIR"/"$(basename "$SHELL")"
+  export TMPPREFIX
+fi

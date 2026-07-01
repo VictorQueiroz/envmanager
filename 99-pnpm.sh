@@ -70,3 +70,6 @@ _install_pnpm
 
 _add_pnpm_to_path
 
+unset -f _pnpm_get_binary_directory
+
+unset -f _add_pnpm_to_path

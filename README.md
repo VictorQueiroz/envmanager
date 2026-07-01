@@ -1,10 +1,10 @@
 # envmanager
 
-### Installation
+## Installation
 
-Add this to your `~/.envmanagerrc`:
+### 1. Create `~/.envmanagerrc`
 
-```
+```sh
 #!/bin/bash
 
 envmanager_load() {
@@ -36,4 +36,11 @@ envmanager_load() {
 
 envmanager_load
 unset -f envmanager_load
+```
+
+### 2. Source it from your `~/.bashrc` or `~/.zshrc`
+
+```sh
+
+source ~/.envmanagerrc
 ```

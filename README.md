@@ -13,7 +13,7 @@ envmanager_load() {
 
   ENVMANAGER_DIR="$XDG_CONFIG_HOME"/envmanager
   
-  if [[ -d "$ENVMANAGER_DIR" ]]; then
+  if [[ ! -d "$ENVMANAGER_DIR" ]]; then
     git -C "$ENVMANAGER_DIR" clone "$envmanager_repo_url"
   fi
 

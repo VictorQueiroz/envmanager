@@ -2,7 +2,7 @@
 
 ## Installation
 
-### 1. Create `~/.envmanagerrc`
+### 1. Create `"$HOME"/.envmanagerrc`
 
 ```sh
 #!/bin/bash
@@ -11,7 +11,16 @@ envmanager_load() {
   local envmanager_repo_url
   envmanager_repo_url="https://github.com/VictorQueiroz/envmanager.git"
 
-  ENVMANAGER_DIR="$XDG_CONFIG_HOME"/envmanager
+  local home_dir
+  home_dir="$HOME"
+
+  if [[ ! -d "$home_dir" ]]; then
+    return 1
+  fi
+
+  local envmanager_root_directory
+  envmanager_root_directory="${XDG_CONFIG_HOME:-$home_dir/.config}"
+  ENVMANAGER_DIR="$envmanager_root_directory"/envmanager
   
   if [[ ! -d "$ENVMANAGER_DIR" ]]; then
     git -C "$ENVMANAGER_DIR" clone "$envmanager_repo_url"
@@ -41,6 +50,5 @@ unset -f envmanager_load
 ### 2. Source it from your `~/.bashrc` or `~/.zshrc`
 
 ```sh
-
-source ~/.envmanagerrc
+source "$HOME"/.envmanagerrc
 ```

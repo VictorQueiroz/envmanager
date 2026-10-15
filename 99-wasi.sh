@@ -10,7 +10,7 @@ download_wasi_sdk() {
   local wasi_major_version=29
   local wasi_url="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$wasi_major_version/wasi-sdk-$wasi_major_version.0-x86_64-linux.tar.gz"
   unset -f download_wasi_sdk
-  mkdir -p "$WASI_SDK_PATH"
+  em_mkdir "$WASI_SDK_PATH"
   wget -o /tmp/wasi-sdk.tar.gz -O- "$wasi_url" | tar xz -C "$WASI_SDK_PATH" --strip-components=1
 }
 

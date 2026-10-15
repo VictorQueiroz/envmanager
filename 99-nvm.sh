@@ -68,7 +68,7 @@ nvm_install() {
   )
 
   # Create NVM_DIR
-  mkdir --parents --verbose "${NVM_DIR}"
+  em_mkdir "${NVM_DIR}"
 
   env "${env_args[@]}" "${install_nvm_bash_args[@]}"
 }

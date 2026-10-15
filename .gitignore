@@ -1,2 +1,6 @@
 /*.local.sh
-/*.zwc
+*.zwc
+/disabled-scripts
+/.serena/
+__pycache__/
+*.pyc

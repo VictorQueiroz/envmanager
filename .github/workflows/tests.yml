@@ -1,0 +1,36 @@
+name: Shell tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install Zsh on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+      - name: Run tests in Bash and Zsh
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          command -v bash
+          command -v zsh
+          bash --version
+          zsh --version
+          python3 -m unittest discover -s tests -v

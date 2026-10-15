@@ -49,7 +49,7 @@ if [ -z "$TMPDIR" ]; then
 fi
 
 if [ -n "$TMPDIR" ] && [ ! -d "$TMPDIR" ]; then
-  mkdir --parents "$TMPDIR"
+  em_mkdir "$TMPDIR"
 fi
 
 # If `SHELL` is defined, set `TMPPREFIX`

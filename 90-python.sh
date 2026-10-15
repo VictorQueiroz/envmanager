@@ -41,7 +41,7 @@ install_pyenv_plugins() {
 
   # Ensure the `plugins` directory exists
   if [ ! -d "$pyenv_plugins_dir" ]; then
-    mkdir --parents --verbose "$pyenv_plugins_dir"
+    em_mkdir "$pyenv_plugins_dir"
   fi
 
   # In case plugins are going to be updated, use these Git arguments to do so.

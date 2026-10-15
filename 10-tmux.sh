@@ -117,7 +117,7 @@ fi
 
 # If `TMUX_TMPDIR` environment variable is set, and the directory does not exist, create it
 if [ -n "$TMUX_TMPDIR" ] && [ ! -d "$TMUX_TMPDIR" ]; then
-  mkdir --parents "$TMUX_TMPDIR"
+  em_mkdir "$TMUX_TMPDIR"
 fi
 
 clone_personal_config

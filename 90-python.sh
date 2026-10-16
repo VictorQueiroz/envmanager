@@ -1,5 +1,14 @@
 #!/bin/bash
 
+UV_VERSION="${UV_VERSION:-0.13.1}"
+
+# Set the `PYENV_ROOT` environment variable
+PYENV_ROOT="$XDG_DATA_HOME/pyenv"
+export PYENV_ROOT
+
+UV_INSTALL_DIR="${UV_INSTALL_DIR:-$HOME/.local/bin}"
+export UV_INSTALL_DIR
+
 install_pyenv_plugins() {
   unset -f install_pyenv_plugins
 
@@ -129,9 +138,53 @@ load_pyenv() {
   znap function _pyenv pyenv 'eval "$(pyenv init -)"'
 }
 
-# Set the `PYENV_ROOT` environment variable
-PYENV_ROOT="$XDG_DATA_HOME/pyenv"
-export PYENV_ROOT
+# Verify if uv is available based on `UV_INSTALL_DIR` and `UV_VERSION`
+uv_needs_installation() {
+  unset -f uv_needs_installation
+
+  if [ -z "$UV_INSTALL_DIR" ] || [ -z "$UV_VERSION" ]; then
+    return 1
+  fi
+
+  # Stop here if the uv binary does not exist
+  if [ ! -x "$UV_INSTALL_DIR/uv" ]; then
+    return 0
+  fi
+
+  local current_uv_version
+  current_uv_version=$("$UV_INSTALL_DIR/uv" --version | awk '{print $2}')
+  
+  # if the output is empty then consider it as not installed
+  if [ -z "$current_uv_version" ]; then
+    return 0
+  fi
+
+  if [ "$current_uv_version" = "$UV_VERSION" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+install_uv() {
+  unset -f install_uv
+
+  if ! uv_needs_installation; then
+    return 0
+  fi
+
+  local uv_installer_config
+  uv_installer_config=(
+    "UV_NO_MODIFY_PATH=1"
+    "UV_DISABLE_UPDATE=1"
+    "UV_DOWNLOAD_URL="
+    "UV_INSTALL_DIR=${UV_INSTALL_DIR}"
+  )
+
+  curl -LsSf "https://releases.astral.sh/github/uv/releases/download/${UV_VERSION}/uv-installer.sh" | env "${uv_installer_config[@]}" sh
+}
 
 # Install pyenv and friends if it's not already installed
 install_pyenv || return 1
+
+install_uv || return 1

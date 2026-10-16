@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # PNPM version
-PNPM_VERSION="${PNPM_VERSION:-11.9.0}"
+PNPM_VERSION="${PNPM_VERSION:-12.11.2}"
 export PNPM_VERSION
 
 # PNPM home directory

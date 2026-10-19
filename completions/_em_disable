@@ -5,5 +5,5 @@ local -a names
 local name
 while IFS= read -r name; do
   em_is_disabled "$name" || names+=("$name")
-done < <(em_script_names)
+done < <(em_available_script_names)
 compadd -a names

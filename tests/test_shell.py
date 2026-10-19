@@ -112,6 +112,7 @@ autoload -Uz compinit
 compinit -D -i
 em_register_completions
 [[ "${_comps[em_disable]}" = _em_disable ]] || exit 10
+[[ "${_comps[em_enable]}" = _em_enable ]] || exit 12
 for hook in "${precmd_functions[@]}"; do
   [ "$hook" != em_register_completions ] || exit 11
 done

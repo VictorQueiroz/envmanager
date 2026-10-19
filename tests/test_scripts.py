@@ -124,6 +124,122 @@ em_disable gpg "$INVALID_NAME"
                     self.assertIn("unknown or protected script", result.stderr)
                     self.assertEqual(blacklist.read_text(), "sdkman\n")
 
+    def test_enable_removes_only_requested_names_and_persists(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                blacklist = self.root / f"{shell}-disabled"
+                blacklist.write_text("# local choices\ngpg\nsdkman\nsdkman\nsdkman-extra\n")
+                extra = {"ENVMANAGER_DISABLED_FILE": str(blacklist)}
+                result = self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_enable sdkman gpg sdkman || exit 10
+em_enable
+''', extra_env=extra)
+                self.assertEqual(result.stdout, "sdkman-extra\n")
+                self.assertEqual(blacklist.read_text(), "# local choices\nsdkman-extra\n")
+                self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_is_disabled sdkman && exit 10
+em_is_disabled gpg && exit 11
+em_is_disabled sdkman-extra || exit 12
+''', extra_env=extra)
+                self.assertEqual(list(self.root.glob(f"{shell}-disabled.*")), [])
+
+    def test_enable_is_idempotent_without_creating_blacklist(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                blacklist = self.root / f"{shell}-missing" / "disabled"
+                extra = {"ENVMANAGER_DISABLED_FILE": str(blacklist)}
+                self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_enable sdkman || exit 10
+em_enable sdkman || exit 11
+em_enable
+''', extra_env=extra)
+                self.assertFalse(blacklist.parent.exists())
+                blacklist.parent.mkdir()
+                blacklist.write_text("# local choices\nsdkman")
+                self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_enable gpg
+''', extra_env=extra)
+                self.assertEqual(blacklist.read_text(), "# local choices\nsdkman")
+
+    def test_enable_validates_entire_request_before_writing(self):
+        for shell in SHELLS:
+            for name in ("missing", "core"):
+                with self.subTest(shell=shell, name=name):
+                    blacklist = self.repo / "disabled-scripts"
+                    blacklist.write_text("sdkman\n")
+                    result = self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_enable sdkman "$INVALID_NAME"
+''', check=False, extra_env={"INVALID_NAME": name})
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("unknown or protected script", result.stderr)
+                    self.assertEqual(blacklist.read_text(), "sdkman\n")
+
+    def test_enable_removes_stale_names_with_relative_override(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                blacklist = self.root / "relative-disabled"
+                blacklist.write_text("sdkman\nremoved-tool")
+                self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_enable sdkman removed-tool
+''', extra_env={"ENVMANAGER_DISABLED_FILE": "relative-disabled"})
+                self.assertEqual(blacklist.read_text(), "")
+                self.assertEqual(list(self.root.glob("relative-disabled.*")), [])
+
+    def test_enable_takes_effect_on_next_load_without_running_scripts(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                if self.log.exists():
+                    self.log.unlink()
+                (self.repo / "disabled-scripts").write_text("sdkman\n")
+                self.shell(shell, '''
+uname() { printf 'Linux\\n'; }
+source "$ENVMANAGER_DIR/00-core.sh"
+em_load_scripts
+em_enable sdkman
+''')
+                self.assertFalse(any("sdkman" in name for name in self.log.read_text().splitlines()))
+                self.log.unlink()
+                self.shell(shell, '''
+uname() { printf 'Linux\\n'; }
+source "$ENVMANAGER_DIR/00-core.sh"
+em_load_scripts
+''')
+                loaded = {name for name in self.log.read_text().splitlines() if "sdkman" in name}
+                self.assertEqual(loaded, {"99-sdkman.sh", "99-sdkman.local.sh", "99-sdkman.linux.sh"})
+
+    def test_enable_reports_write_failures_without_losing_blacklist(self):
+        for shell in SHELLS:
+            for failing_command in ("mktemp", "mv"):
+                with self.subTest(shell=shell, command=failing_command):
+                    blacklist = self.root / f"{shell}-disabled"
+                    blacklist.write_text("gpg\nsdkman\n")
+                    result = self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+''' + f"{failing_command}() {{ return 7; }}\nem_enable sdkman\n",
+                                        check=False, extra_env={"ENVMANAGER_DISABLED_FILE": str(blacklist)})
+                    self.assertEqual(result.returncode, 7 if failing_command == "mktemp" else 1)
+                    self.assertEqual(blacklist.read_text(), "gpg\nsdkman\n")
+                    self.assertEqual(list(self.root.glob(f"{shell}-disabled.*")), [])
+
+    def test_enable_rejects_directory_blacklist(self):
+        directory = self.root / "blacklist-directory"
+        directory.mkdir()
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                result = self.shell(shell, '''
+source "$ENVMANAGER_DIR/00-core.sh"
+em_enable sdkman
+''', check=False, extra_env={"ENVMANAGER_DISABLED_FILE": str(directory)})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("blacklist path is a directory", result.stderr)
+                self.assertEqual(list(directory.iterdir()), [])
+
     def test_missing_final_newline_and_relative_override(self):
         for shell in SHELLS:
             with self.subTest(shell=shell):
@@ -231,12 +347,61 @@ git() {
                 self.assertEqual((self.root / f"{shell}-git").read_text(), "clone\nupdate\n")
 
     @unittest.skipUnless(shutil.which("zsh"), "Zsh is not installed")
+    def test_zsh_completions_filter_by_os_and_disabled_state(self):
+        common = {"before", "generic", "sdkman"}
+        platform_names = {
+            "Linux": {"gpg"},
+            "Darwin": {"apple", "alias"},
+            "FreeBSD": {"bsd"},
+            "OpenBSD": set(),
+            "NetBSD": set(),
+            "MSYS_NT-10.0": {"windows"},
+        }
+        for os_name, specific in platform_names.items():
+            with self.subTest(os=os_name):
+                blacklist = self.repo / "disabled-scripts"
+                if blacklist.exists():
+                    blacklist.unlink()
+                result = self.shell("zsh", '''
+uname() { printf '%s\\n' "$TEST_OS"; }
+autoload -Uz compinit; compinit -D -i
+source "$ENVMANAGER_DIR/00-core.sh"
+compadd() { printf '%s\\n' "${names[@]}"; }
+_em_disable
+printf '%s\\n' ---
+printf '%s\\n' sdkman gpg apple alias bsd windows removed-tool > "$(em_disabled_file)"
+_em_disable
+printf '%s\\n' ---
+_em_enable
+''', extra_env={"TEST_OS": os_name})
+                initial, remaining, enabled = result.stdout.split("---\n")
+                self.assertEqual(set(initial.splitlines()), common | specific)
+                self.assertEqual(len(initial.splitlines()), len(common | specific))
+                self.assertEqual(set(remaining.splitlines()), {"before", "generic"})
+                self.assertEqual(set(enabled.splitlines()), {"sdkman"} | specific)
+                self.assertEqual(len(enabled.splitlines()), len({"sdkman"} | specific))
+
+    def test_cross_platform_scripts_can_still_be_managed_explicitly(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                self.shell(shell, '''
+uname() { printf 'Linux\\n'; }
+source "$ENVMANAGER_DIR/00-core.sh"
+em_disable apple || exit 10
+em_is_disabled apple || exit 11
+em_enable apple || exit 12
+em_is_disabled apple && exit 13
+exit 0
+''')
+
+    @unittest.skipUnless(shutil.which("zsh"), "Zsh is not installed")
     def test_zsh_completion_before_and_after_compinit(self):
         for order in ("before", "after"):
             with self.subTest(order=order):
                 initialize = "autoload -Uz compinit; compinit -D -i\n"
                 source = 'source "$ENVMANAGER_DIR/00-core.sh"\n'
                 setup = source + initialize if order == "before" else initialize + source
+                setup = "uname() { printf 'Linux\\n'; }\n" + setup
                 result = self.shell("zsh", setup + '''
 [[ "${_comps[em_disable]}" = _em_disable ]] || exit 10
 # Exercise the actual autoloaded completion, capturing its compadd candidates.
@@ -252,6 +417,27 @@ _em_disable
                 self.assertNotIn("core", first.splitlines())
                 self.assertEqual(first.splitlines().count("gpg"), 1)
                 (self.repo / "disabled-scripts").unlink()
+
+    @unittest.skipUnless(shutil.which("zsh"), "Zsh is not installed")
+    def test_zsh_enable_completion_before_and_after_compinit(self):
+        for order in ("before", "after"):
+            with self.subTest(order=order):
+                (self.repo / "disabled-scripts").write_text("gpg\nsdkman\nremoved-tool\n")
+                initialize = "autoload -Uz compinit; compinit -D -i\n"
+                source = 'source "$ENVMANAGER_DIR/00-core.sh"\n'
+                setup = source + initialize if order == "before" else initialize + source
+                setup = "uname() { printf 'Linux\\n'; }\n" + setup
+                result = self.shell("zsh", setup + '''
+[[ "${_comps[em_enable]}" = _em_enable ]] || exit 10
+compadd() { printf '%s\\n' "${names[@]}"; }
+_em_enable
+em_enable sdkman || exit 11
+printf '%s\\n' ---
+_em_enable
+''')
+                first, second = result.stdout.split("---\n")
+                self.assertEqual(set(first.splitlines()), {"gpg", "sdkman"})
+                self.assertEqual(set(second.splitlines()), {"gpg"})
 
 
 if __name__ == "__main__":

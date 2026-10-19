@@ -12,9 +12,10 @@ em_register_completions() {
     *":$completion_dir:"*) ;;
     *) fpath=("$completion_dir" "${fpath[@]}") ;;
   esac
-  autoload -Uz _em_disable add-zsh-hook
+  autoload -Uz _em_disable _em_enable add-zsh-hook
   if typeset -p _comps >/dev/null 2>&1; then
     compdef _em_disable em_disable
+    compdef _em_enable em_enable
     add-zsh-hook -d precmd em_register_completions
   else
     add-zsh-hook precmd em_register_completions

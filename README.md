@@ -47,7 +47,7 @@ source "$HOME"/.envmanagerrc
 For an existing installation, update `~/.envmanagerrc` to the loader above to
 enable blacklist and OS filtering.
 
-## Disable scripts
+## Disable and enable scripts
 
 Run `em_disable sdkman` to skip SDKMAN on future shell loads. Names omit the
 numeric prefix and the `.sh`, OS and `.local` suffixes. The blacklist applies to
@@ -57,12 +57,28 @@ Multiple names are accepted, for example `em_disable sdkman wasi`. Run
 `em_disable` without arguments to list disabled names. Disabling a script takes
 effect on the next load; it does not undo exports or functions already loaded.
 
-The list is saved in `$ENVMANAGER_DIR/disabled-scripts` and ignored by Git. Remove
-a name from that file to enable it again. Set `ENVMANAGER_DISABLED_FILE` before
-loading envmanager to use another file. Core helpers cannot be disabled.
+Run `em_enable sdkman wasi` to remove those names from the disabled list. Scripts
+run again on the next load; enabling does not immediately execute them or their
+installers. Already enabled scripts are left alone. Names still in the disabled
+list can be removed even if their scripts no longer exist. Unknown names are
+rejected before any changes are written. With no arguments, `em_enable` also
+lists disabled names.
 
-Zsh completion suggests available script names, excluding disabled names. It
-works with the standard `compinit` completion system whether envmanager loads
+The list is saved in `$ENVMANAGER_DIR/disabled-scripts` and ignored by Git. Set
+`ENVMANAGER_DISABLED_FILE` before loading envmanager to use another file. Core
+helpers cannot be disabled.
+
+Zsh completion suggests names with at least one unsuffixed or current-OS script:
+enabled names for `em_disable`, and disabled names for `em_enable`. OS aliases
+and local variants follow the same rules as script loading. Names are suggested
+only once even when several variants match.
+
+The disabled list is shared across platforms, and no-argument listings show the
+full list. Other-OS names can still be typed explicitly, and `em_enable` can still
+remove stale entries whose scripts are gone; those entries are omitted from
+completion.
+
+Completion works with the standard `compinit` system whether envmanager loads
 before or after it. If your Zsh configuration does not initialize completion,
 add `autoload -Uz compinit; compinit` to `~/.zshrc`.
 

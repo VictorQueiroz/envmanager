@@ -161,6 +161,21 @@ printf '%s\\n' "$JAVA_HOME" "$BROWSER"
                     str(java.parent.parent), "termux-open-url", "preferred-jdk", "preferred-browser",
                 ])
 
+    def test_termux_without_a_jdk_starts_in_bash_and_zsh(self):
+        shutil.copy2(PROJECT / "99-java.android.termux.sh", self.repo)
+        prefix = self.root / "empty app prefix"
+        for empty_directory in (False, True):
+            if empty_directory:
+                (prefix / "lib/jvm").mkdir(parents=True)
+            for shell in SHELLS:
+                with self.subTest(shell=shell, empty_directory=empty_directory):
+                    result = self.shell(shell, SOURCE_CORE + '''
+em_load_scripts || exit 10
+printf '%s\\n' "${JAVA_HOME:-no JDK}"
+''', extra_env={"ENVMANAGER_OS": "android", "ENVMANAGER_RUNTIME": "termux",
+                "PREFIX": str(prefix)})
+                    self.assertEqual(result.stdout, "no JDK\n")
+
     def test_android_completions_match_runtime_and_user_choices(self):
         if "zsh" not in SHELLS:
             self.skipTest("Zsh is not installed")

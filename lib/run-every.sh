@@ -14,9 +14,9 @@ em_expiry_pending() {
 
 # Hash a string into a short, filesystem-safe token.
 em_hash() {
-  if command -v sha1sum &>/dev/null; then
+  if command -v sha1sum >/dev/null 2>&1; then
     printf '%s' "$1" | sha1sum | cut -d' ' -f1
-  elif command -v md5sum &>/dev/null; then
+  elif command -v md5sum >/dev/null 2>&1; then
     printf '%s' "$1" | md5sum | cut -d' ' -f1
   else
     printf '%s' "$1" | cksum | tr -d ' '
@@ -75,6 +75,6 @@ em_run_every() {
   em_print_debug 'em_run_every: running\n'
   "$@" || return $?
 
-  em_mkdir "$state_dir"
+  em_mkdir "$state_dir" || return
   printf '%s\n' "$(( now + ttl ))" > "$state_file"
 }

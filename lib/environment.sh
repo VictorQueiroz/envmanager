@@ -56,17 +56,50 @@ em_export_alternatives() {
 
 # Configure defaults and create the fallback temporary directory.
 em_init_environment() {
+  local os runtime
+  os="$(em_current_os)" || return
+  runtime="$(em_current_runtime)" || return
+  if [ "$os" = android ]; then
+    if [ -z "${TMPDIR:-}" ]; then
+      if [ "$runtime" = termux ] && [ -n "${PREFIX:-}" ]; then
+        TMPDIR="$PREFIX/tmp"
+      elif [ -n "${HOME:-}" ]; then
+        TMPDIR="$HOME/.tmp"
+      else
+        printf 'envmanager: Android requires a writable TMPDIR or HOME\n' >&2
+        return 1
+      fi
+    fi
+    case "$TMPDIR" in
+      /*) ;;
+      *) printf 'envmanager: Android TMPDIR must be absolute\n' >&2; return 1 ;;
+    esac
+    em_mkdir "$TMPDIR" || return
+    [ -d "$TMPDIR" ] && [ -w "$TMPDIR" ] && [ -x "$TMPDIR" ] || {
+      printf 'envmanager: Android TMPDIR is not writable: %s\n' "$TMPDIR" >&2
+      return 1
+    }
+    export TMPDIR
+  fi
   if [ -z "$TMPDIR" ]; then
     if [ -n "$HOME" ]; then
       # If HOME is set, use a subdirectory under it for temporary files.
       TMPDIR="$HOME/.tmp"
-      em_mkdir "$TMPDIR"
+      em_mkdir "$TMPDIR" || return
     else
       # Fallback to /tmp if HOME is not set.
       TMPDIR="/tmp"
     fi
 
     export TMPDIR
+  fi
+
+  # Providers may need these before the numbered defaults script is loaded.
+  if [ -n "${HOME:-}" ]; then
+    em_export_alternatives XDG_CONFIG_HOME "$HOME/.config"
+    em_export_alternatives XDG_CACHE_HOME "$HOME/.cache"
+    em_export_alternatives XDG_DATA_HOME "$HOME/.local/share"
+    em_export_alternatives XDG_STATE_HOME "$HOME/.local/state"
   fi
 
   ENVMANAGER_SYSTEMD_IDENTIFIER=envmanager

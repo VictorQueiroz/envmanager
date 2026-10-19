@@ -10,7 +10,7 @@ import unittest
 
 PROJECT = Path(__file__).resolve().parents[1]
 SHELLS = [shell for shell in ("bash", "zsh") if shutil.which(shell)]
-MODULES = ("environment", "scripts", "run-every", "shell")
+MODULES = ("platform", "environment", "scripts", "run-every", "shell")
 SOURCE_MODULES = "\n".join(
     f'source "$ENVMANAGER_DIR/lib/{name}.sh" || exit $?' for name in MODULES
 )
@@ -32,9 +32,15 @@ class ShellTestCase(unittest.TestCase):
         self.repo = self.home / ".config" / "envmanager"
         self.repo.mkdir(parents=True)
         shutil.copy2(PROJECT / "00-core.sh", self.repo)
+        shutil.copy2(PROJECT / "envmanagerrc", self.repo)
         for directory in ("lib", "completions"):
             if (PROJECT / directory).is_dir():
                 shutil.copytree(PROJECT / directory, self.repo / directory)
+        # OS fixtures must not see the host phone's real Android properties.
+        # Detection tests replace this probe explicitly; device smoke tests use
+        # the unmodified production module.
+        platform = self.repo / "lib/platform.sh"
+        platform.write_text(platform.read_text() + "\nem_android_sdk() { return 1; }\n")
         self.log = self.root / "calls"
         self.environment = {
             "PATH": os.environ["PATH"],

@@ -1,0 +1,36 @@
+#!/bin/sh
+
+envmanager_load() {
+  if [ -z "${ENVMANAGER_DIR:-}" ]; then
+    [ -n "${HOME:-}" ] || { printf 'envmanager: set HOME or ENVMANAGER_DIR\n' >&2; return 1; }
+    ENVMANAGER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/envmanager"
+  fi
+
+  if [ ! -d "$ENVMANAGER_DIR" ]; then
+    command -v git >/dev/null 2>&1 || {
+      printf 'envmanager: install Git or copy an existing checkout to %s\n' "$ENVMANAGER_DIR" >&2
+      return 1
+    }
+    command mkdir -p "${ENVMANAGER_DIR%/*}" || return
+    git clone https://github.com/VictorQueiroz/envmanager.git "$ENVMANAGER_DIR" || return
+  fi
+
+  . "$ENVMANAGER_DIR/00-core.sh" || return
+  em_load_scripts || return
+
+  # Android startup is offline by default; an existing checkout needs no Git.
+  local auto_update="${ENVMANAGER_AUTO_UPDATE:-}" os
+  os="$(em_current_os)" || return
+  if [ -z "$auto_update" ]; then
+    if [ "$os" = android ]; then auto_update=false; else auto_update=true; fi
+  fi
+  if [ "$auto_update" = true ] && command -v git >/dev/null 2>&1; then
+    em_run_every 1d git -C "$ENVMANAGER_DIR" pull --ff-only
+  fi
+  return 0
+}
+
+envmanager_load
+envmanager_load_status=$?
+unset -f envmanager_load
+return "$envmanager_load_status"

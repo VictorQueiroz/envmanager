@@ -8,6 +8,30 @@ from helpers import SHELLS, SOURCE_MODULES, ShellTestCase
 
 
 class ShellTests(ShellTestCase):
+    def test_portable_logging_backends_preserve_messages_and_privacy(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                log_file = self.root / f"{shell} log directory/messages.log"
+                self.shell(shell, SOURCE_MODULES + '''
+ENVMANAGER_ENABLE_LOGGING=true
+ENVMANAGER_LOG_BACKEND=file
+em_init
+em_export_alternatives EM_TEST_VALUE "$TEST_PRIVATE_VALUE"
+em_print '%s\\n' 'literal message'
+''', extra_env={"ENVMANAGER_LOG_FILE": str(log_file),
+                "TEST_PRIVATE_VALUE": "private-marker"})
+                messages = log_file.read_text()
+                self.assertIn("literal message\n", messages)
+                self.assertNotIn("private-marker", messages)
+                self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
+                result = self.shell(shell, SOURCE_MODULES + '''
+ENVMANAGER_ENABLE_LOGGING=true
+ENVMANAGER_LOG_BACKEND=stderr
+em_print_err '%s\\n' 'portable error'
+''', check=False)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stderr, "portable error\n")
+
     def test_automatic_logging_omits_environment_values_and_command_arguments(self):
         for shell in SHELLS:
             with self.subTest(shell=shell):

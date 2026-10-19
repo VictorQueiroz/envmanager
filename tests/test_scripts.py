@@ -112,7 +112,7 @@ em_is_disabled sdkman && em_is_disabled gpg
 
     def test_invalid_names_do_not_change_blacklist(self):
         for shell in SHELLS:
-            for name in ("missing", "core"):
+            for name in ("", "missing", "core"):
                 with self.subTest(shell=shell, name=name):
                     blacklist = self.repo / "disabled-scripts"
                     blacklist.write_text("sdkman\n")
@@ -301,7 +301,7 @@ em_load_scripts
                                      ["00-before.sh", "01-generic.sh"] + os_scripts)
 
     def test_documented_loader_uses_filters_and_updates_once(self):
-        loader = (PROJECT / "README.md").read_text().split("```sh\n", 1)[1].split("```", 1)[0]
+        loader = '. "$TEST_LOADER" || exit $?\n'
         (self.repo / "disabled-scripts").write_text("sdkman\n")
         for shell in SHELLS:
             with self.subTest(shell=shell):
@@ -313,6 +313,7 @@ uname() { printf 'Linux\\n'; }
 git() { printf 'update\\n' >> "$TEST_GIT_LOG"; }
 ''' + loader + "\n" + loader, extra_env={
                     "TEST_GIT_LOG": str(run_log),
+                    "TEST_LOADER": str(PROJECT / "envmanagerrc"),
                     "TMPDIR": str(self.root / f"{shell}-tmp"),
                 })
                 expected = ["00-before.sh", "01-generic.sh", "02-gpg.linux.sh", "05-gpg.linux.local.sh"]
@@ -320,7 +321,7 @@ git() { printf 'update\\n' >> "$TEST_GIT_LOG"; }
                 self.assertEqual(run_log.read_text(), "update\n")
 
     def test_documented_loader_bootstraps_a_missing_installation(self):
-        loader = (PROJECT / "README.md").read_text().split("```sh\n", 1)[1].split("```", 1)[0]
+        loader = '. "$TEST_LOADER" || exit $?\n'
         for shell in SHELLS:
             with self.subTest(shell=shell):
                 config_directory = self.root / f"{shell}-new-config"
@@ -339,6 +340,8 @@ git() {
 }
 ''' + loader, extra_env={
                     "XDG_CONFIG_HOME": str(config_directory),
+                    "ENVMANAGER_DIR": "",
+                    "TEST_LOADER": str(PROJECT / "envmanagerrc"),
                     "TEST_SOURCE_REPO": str(self.repo),
                     "TEST_GIT_LOG": str(self.root / f"{shell}-git"),
                     "TMPDIR": str(self.root / f"{shell}-tmp"),

@@ -24,7 +24,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh
+          sudo apt-get install -y zsh mksh
       - name: Run tests in Bash and Zsh
         env:
           PYTHONDONTWRITEBYTECODE: '1'
@@ -34,3 +34,8 @@ jobs:
           bash --version
           zsh --version
           python3 -m unittest discover -s tests -v
+      - name: Check Android system-shell compatibility with mksh
+        if: runner.os == 'Linux'
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: mksh tests/android-system-smoke.sh "$PWD"

@@ -54,6 +54,30 @@ em_export_alternatives() {
   em_print 'Configured %s\n' "$var_name"
 }
 
+# Preserve an explicit path, otherwise reuse the first existing path (preferred
+# first), falling back to the preferred path for a new installation. Paths may
+# name directories or files; selection never creates or migrates either.
+em_export_path() {
+  [ $# -ge 2 ] && [ -n "$2" ] || return 2
+  local var_name="$1" preferred_path="$2" original_value selected_path candidate
+  shift 2
+  original_value="$(em_get_var_value "$var_name")" || return
+  if [ -n "$original_value" ]; then
+    export "$var_name=$original_value"
+    return 0
+  fi
+
+  selected_path="$preferred_path"
+  for candidate in "$preferred_path" "$@"; do
+    if [ -n "$candidate" ] && [ -e "$candidate" ]; then
+      selected_path="$candidate"
+      break
+    fi
+  done
+  export "$var_name=$selected_path"
+  em_print 'Configured %s\n' "$var_name"
+}
+
 # Configure defaults and create the fallback temporary directory.
 em_init_environment() {
   local os runtime

@@ -6,6 +6,10 @@ set -eu
 umask 077
 em_test_source="${1:?pass the envmanager checkout path}"
 em_test_root="$(mktemp -d "${TMPDIR:?set a writable TMPDIR}/envmanager-smoke.XXXXXX")"
+HOME="$em_test_root/home"
+mkdir "$HOME" "$HOME/.codex"
+export HOME
+unset XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
 mkdir "$em_test_root/repo"
 cp "$em_test_source/00-core.sh" "$em_test_root/repo/00-core.sh"
 cp -R "$em_test_source/lib" "$em_test_root/repo/lib"
@@ -34,6 +38,15 @@ wget() { printf 'unexpected download\n' >&2; exit 93; }
 [ "$EM_SYSTEM_VALUE" = yes ]
 [ "$(em_available_script_names)" = "native
 test" ]
+
+# Exercise production path selection and exports in Android's native shell.
+unset CODEX_HOME CODEX_SQLITE_HOME
+. "$em_test_source/99-codex.sh"
+[ "$CODEX_HOME" = "$HOME/.codex" ]
+[ "$CODEX_SQLITE_HOME" = "$CODEX_HOME" ]
+sh -c '[ "$CODEX_HOME" = "$HOME/.codex" ] && [ "$CODEX_SQLITE_HOME" = "$CODEX_HOME" ]'
+[ ! -e "$XDG_DATA_HOME/codex" ]
+
 em_disable test
 em_is_disabled test
 em_enable test

@@ -1,4 +1,3 @@
 #!/bin/bash
 
-GRADLE_USER_HOME="$XDG_DATA_HOME"/gradle
-export GRADLE_USER_HOME
+em_export_path GRADLE_USER_HOME "$XDG_DATA_HOME/gradle" "${HOME:+$HOME/.gradle}"

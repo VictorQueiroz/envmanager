@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-WASI_SDK_PATH="$XDG_DATA_HOME/wasi-sdk"
+em_export_path WASI_SDK_PATH "$XDG_DATA_HOME/wasi-sdk"
 
 download_wasi_sdk() {
   if [ -d "$WASI_SDK_PATH" ]; then
@@ -15,5 +15,3 @@ download_wasi_sdk() {
 }
 
 download_wasi_sdk
-
-export WASI_SDK_PATH

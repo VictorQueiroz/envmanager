@@ -3,8 +3,7 @@
 NODE_OPTIONS="--max-old-space-size=1536"
 export NODE_OPTIONS
 
-NODE_COMPILE_CACHE="$TMPDIR"/node-compile-cache
-export NODE_COMPILE_CACHE
+em_export_path NODE_COMPILE_CACHE "$TMPDIR/node-compile-cache"
 
 NODE_COMPILE_CACHE_PORTABLE=1
 export NODE_COMPILE_CACHE_PORTABLE

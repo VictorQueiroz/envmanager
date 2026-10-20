@@ -3,11 +3,9 @@
 UV_VERSION="${UV_VERSION:-0.13.1}"
 
 # Set the `PYENV_ROOT` environment variable
-PYENV_ROOT="$XDG_DATA_HOME/pyenv"
-export PYENV_ROOT
+em_export_path PYENV_ROOT "$XDG_DATA_HOME/pyenv" "${HOME:+$HOME/.pyenv}"
 
-UV_INSTALL_DIR="${UV_INSTALL_DIR:-$HOME/.local/bin}"
-export UV_INSTALL_DIR
+em_export_path UV_INSTALL_DIR "$HOME/.local/bin"
 
 install_pyenv_plugins() {
   unset -f install_pyenv_plugins

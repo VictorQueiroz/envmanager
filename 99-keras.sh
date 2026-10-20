@@ -1,4 +1,3 @@
 #!/bin/bash
 
-KERAS_HOME="${XDG_STATE_HOME}/keras"
-export KERAS_HOME
+em_export_path KERAS_HOME "$XDG_STATE_HOME/keras" "${HOME:+$HOME/.keras}"

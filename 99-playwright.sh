@@ -6,11 +6,9 @@ _setup_playwright() {
   local playwright_temp_root_dir
   playwright_temp_root_dir="${TMPDIR}/playwright"
 
-  PWTEST_CACHE_DIR="${playwright_temp_root_dir}/cache"
-  export PWTEST_CACHE_DIR
+  em_export_path PWTEST_CACHE_DIR "$playwright_temp_root_dir/cache"
 
-  PLAYWRIGHT_BROWSERS_PATH="${playwright_temp_root_dir}/browsers"
-  export PLAYWRIGHT_BROWSERS_PATH
+  em_export_path PLAYWRIGHT_BROWSERS_PATH "$playwright_temp_root_dir/browsers"
 }
 
 _setup_playwright

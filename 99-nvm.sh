@@ -1,7 +1,6 @@
 #!/bin/bash
 
-NVM_DIR="$XDG_DATA_HOME/nvm"
-export NVM_DIR
+em_export_path NVM_DIR "$XDG_DATA_HOME/nvm" "${HOME:+$HOME/.nvm}"
 
 nvm_init() {
   # Initialize NVM

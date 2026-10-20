@@ -6,8 +6,7 @@ emsdk_download() {
   local emsdk_url
   emsdk_url=https://github.com/emscripten-core/emsdk.git
 
-  EMSDK_DIR="${EMSDK_DIR:-$XDG_DATA_HOME/emsdk}"
-  export EMSDK_DIR
+  em_export_path EMSDK_DIR "$XDG_DATA_HOME/emsdk"
 
   if [ ! -d "$EMSDK_DIR" ]; then
     printf 'Cloning emsdk into %s...\n' "$EMSDK_DIR"

@@ -83,6 +83,43 @@ Windows detection covers Cygwin, MSYS and MinGW shells. Eligible scripts still
 load in filename order, after core helpers.
 If a compatible script fails, loading stops and returns its failure status.
 
+## Tool paths
+
+Tool configuration, data, installation and cache providers use
+`em_export_path VARIABLE preferred_path [existing_alternatives...]`:
+
+1. Preserve and export a nonempty explicit value, even if the path does not exist.
+2. Reuse the preferred path when it exists.
+3. Otherwise reuse the first existing alternative.
+4. If none exists, export the preferred path for a new installation.
+
+Selection only checks paths; it does not create, copy, merge or move tool data.
+Files and symlinks to existing paths are supported as well as directories.
+Candidates are literal shell paths and work without OS detection or external
+path-resolution tools. Each provider supplies the paths appropriate to its tool;
+this does not infer arbitrary operating-system or application conventions.
+
+For example, Codex prefers an existing `$XDG_DATA_HOME/codex`, then an existing
+`$HOME/.codex`, and uses the XDG path when neither exists. Its SQLite state stays
+with a native/custom Codex home. An XDG Codex home reuses an existing
+`$XDG_STATE_HOME/codex`, then its own home directory, before starting a new split
+state directory. Explicit `CODEX_SQLITE_HOME` always takes precedence.
+
+Cargo, Gradle, Keras, npm, NVM, pyenv and SDKMAN also check their conventional
+home paths before creating a separate XDG installation. Providers without a
+conventional alternative retain their existing defaults while preserving explicit
+preferences. Set a variable before loading envmanager to select a path explicitly:
+
+```sh
+export CODEX_HOME="$HOME/.codex"
+. "$HOME/.envmanagerrc"
+```
+
+If both paths exist, the preferred XDG path wins; envmanager never merges them.
+An inherited variable also counts as explicit. To recalculate Codex paths in an
+already configured shell, run `unset CODEX_HOME CODEX_SQLITE_HOME` before sourcing
+the loader again. Fresh Termux sessions use Termux's existing `$HOME` directly.
+
 ## Android
 
 Android is an OS, while Termux is an Android runtime. Detection checks Android's
@@ -144,8 +181,9 @@ individual module and call its decision helpers directly. Functions that perform
 actions use the other modules as documented at the top of each file.
 
 `em_first_nonempty` selects a value; `em_export_alternatives` applies it to the
-current shell. `em_normalize_os` accepts an OS name; `em_current_os` queries the
-host. `em_expiry_pending` accepts the current time and an expiration;
+current shell. `em_export_path` applies the path selection policy above without
+changing the generic string fallback behavior. `em_normalize_os` accepts an OS
+name; `em_current_os` queries the host. `em_expiry_pending` accepts the current time and an expiration;
 `em_run_every` reads state and executes commands. `em_now` wraps `date +%s` and
 can be redefined by a test to provide a fixed clock.
 

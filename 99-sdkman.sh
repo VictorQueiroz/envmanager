@@ -1,5 +1,7 @@
 #!/bin/bash
 
+em_export_path SDKMAN_DIR "$XDG_DATA_HOME/sdkman" "${HOME:+$HOME/.sdkman}"
+
 sdkman_init() {
   unset -f sdkman_init
   #

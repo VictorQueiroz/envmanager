@@ -5,8 +5,7 @@ PNPM_VERSION="${PNPM_VERSION:-12.11.2}"
 export PNPM_VERSION
 
 # PNPM home directory
-PNPM_HOME=${PNPM_HOME:-"$XDG_DATA_HOME/pnpm"}
-export PNPM_HOME
+em_export_path PNPM_HOME "$XDG_DATA_HOME/pnpm"
 
 _pnpm_get_binary_directory() {
   local pnpm_binary_directory

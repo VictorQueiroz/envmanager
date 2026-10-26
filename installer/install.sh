@@ -60,31 +60,108 @@ fi
 # <<< EnvManager <<<
 BLOCK
 }
-em_i_edit_rc() {
-  em_i_rc=$1
-  [ ! -e "$em_i_rc" ] || [ -f "$em_i_rc" ] || em_i_error "not a shell configuration file: $em_i_rc"
-  # An unmatched marker is a conflict, never a reason to discard the rest.
-  if [ -f "$em_i_rc" ]; then
-    em_i_begin=$(grep -c '^# >>> EnvManager >>>$' "$em_i_rc" || :)
-    em_i_end=$(grep -c '^# <<< EnvManager <<<$' "$em_i_rc" || :)
-    [ "$em_i_begin" = "$em_i_end" ] && [ "$em_i_begin" -le 1 ] || em_i_error "conflicting managed markers in $em_i_rc"
-  fi
-  : > "$em_i_tmp/rc"
-  if [ -f "$em_i_rc" ]; then
-    awk -v block="$em_i_tmp/block" -v remove="$em_i_remove" '
-      function emit( line) { while ((getline line < block)>0) print line; close(block); inserted=1 }
-      /^# >>> EnvManager >>>$/ { if(remove=="true") print ": # EnvManager integration removed"; else emit(); inside=1; next }
-      /^# <<< EnvManager <<<$/{ inside=0; next }
-      inside { next }
-      { trimmed=$0; sub(/^[ \t]+/,"",trimmed); sub(/[ \t]+$/,"",trimmed) }
-      remove!="true" && (trimmed==". \"$HOME/.envmanagerrc\"" || trimmed=="source \"$HOME/.envmanagerrc\"" || trimmed==". ~/.envmanagerrc" || trimmed=="source ~/.envmanagerrc") {
-        if(!inserted) emit(); else print ": # Duplicate EnvManager integration removed"; next
+em_i_rc_files() {
+  if [ -f "$em_i_state/rc-files" ]; then cat "$em_i_state/rc-files" || return; fi
+  [ "$em_i_remove" != true ] || return 0
+  case "$em_i_shell" in bash|both)
+    printf '%s\n' "$HOME/.bashrc"
+    em_i_login=$HOME/.bash_profile
+    for em_i_candidate in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+      if [ -f "$em_i_candidate" ]; then em_i_login=$em_i_candidate; break; fi
+    done
+    printf '%s\n' "$em_i_login" ;;
+  esac
+  case "$em_i_shell" in zsh|both) printf '%s\n' "${ZDOTDIR:-$HOME}/.zshrc" ;; esac
+}
+
+# This same read-only planner describes and renders every migration. Its small
+# lexical matcher never sources configuration or evaluates a path expression.
+em_i_plan_rc() {
+  [ ! -e "$1" ] || [ -f "$1" ] || em_i_error "not a shell configuration file: $1"
+  em_i_input=$1
+  [ -f "$em_i_input" ] || em_i_input=/dev/null
+  EM_I_PLAN_FILE="$1" EM_I_PLAN_MODE="$2" EM_I_PLAN_REMOVE="$em_i_remove" \
+  EM_I_PLAN_BLOCK="$(em_i_block)" awk '
+    function trimmed(value) { sub(/^[ \t]+/, "", value); sub(/[ \t]+$/, "", value); return value }
+    function fail(line, message) {
+      printf "envmanager: %s:%d: %s; review this integration before retrying.\n", file, line, message > "/dev/stderr"
+      failed=1
+      exit 2
+    }
+    function hook(value, rest, i) {
+      value=trimmed(value)
+      if(value !~ /^(source|\.)[ \t]+/) return 0
+      sub(/^(source|\.)[ \t]+/, "", value)
+      for(i=1; i<=path_count; i++) {
+        if(substr(value, 1, length(paths[i])) != paths[i]) continue
+        rest=substr(value, length(paths[i])+1)
+        if(rest ~ /^[ \t]*$/ || rest ~ /^[ \t]+#/ || rest ~ /^[ \t]*;[ \t]*(#.*)?$/) return 1
       }
-      { print }
-      END { if(remove!="true" && !inserted) { print ""; emit() } }
-    ' "$em_i_rc" > "$em_i_tmp/rc"
-  elif [ "$em_i_remove" != true ]; then em_i_block > "$em_i_tmp/rc"; fi
-  if [ "$em_i_remove" != true ] || [ -f "$em_i_rc" ]; then em_i_write "$em_i_rc" "$em_i_tmp/rc"; fi
+      return 0
+    }
+    function emit(command) {
+      print template[1]; print template[2]; print template[3]
+      print command
+      print template[5]; print template[6]
+    }
+    BEGIN {
+      file=ENVIRON["EM_I_PLAN_FILE"]
+      mode=ENVIRON["EM_I_PLAN_MODE"]
+      remove=ENVIRON["EM_I_PLAN_REMOVE"]=="true"
+      split(ENVIRON["EM_I_PLAN_BLOCK"], template, "\n")
+      paths[++path_count]="\"$HOME/.envmanagerrc\""
+      paths[++path_count]="\"$HOME\"/.envmanagerrc"
+      paths[++path_count]="\"${HOME}/.envmanagerrc\""
+      paths[++path_count]="\"${HOME}\"/.envmanagerrc"
+      paths[++path_count]="~/.envmanagerrc"
+    }
+    {
+      lines[NR]=$0
+      if($0==template[1]) {
+        if(start || inside) fail(NR, "conflicting managed markers")
+        start=NR; inside=1; next
+      }
+      if($0==template[6]) {
+        if(!inside) fail(NR, "conflicting managed markers")
+        finish=NR; inside=0; next
+      }
+      if(inside) { body[++body_count]=$0; next }
+      if(remove) next
+      value=trimmed($0)
+      if(value=="" || substr(value,1,1)=="#") next
+      if(hook($0)) {
+        if(legacy) fail(NR, "multiple legacy EnvManager hooks")
+        legacy=NR
+      } else if(index(value,"envmanagerrc")) fail(NR, "unrecognized EnvManager reference")
+    }
+    END {
+      if(failed) exit 2
+      if(inside) fail(start, "conflicting managed markers")
+      if(start && (body_count!=4 || body[1]!=template[2] || body[2]!=template[3] || !hook(body[3]) || body[4]!=template[5]))
+        fail(start, "edited managed block")
+      position=legacy ? legacy : (start ? start : NR+1)
+      if(remove) action=start ? "remove managed hook" : "unchanged"
+      else if(legacy) action=start ? "repair duplicate hook in place" : "adopt existing hook in place"
+      else action=start ? "unchanged" : "append managed hook"
+      if(mode=="describe") { printf "%s:%d: %s\n", file, position, action; exit }
+      command=legacy ? lines[legacy] : (start ? body[3] : template[4])
+      for(i=1; i<=NR; i++) {
+        if(remove) {
+          if(i==start) print ": # EnvManager integration removed"
+        } else if(i==position) emit(command)
+        if(start && i>=start && i<=finish) continue
+        if(!remove && i==legacy) continue
+        print lines[i]
+      }
+      if(!remove && !start && !legacy) { if(NR) print ""; emit(command) }
+    }
+  ' "$em_i_input"
+}
+
+em_i_edit_rc() {
+  if [ "$em_i_remove" = true ] && [ ! -f "$1" ]; then return; fi
+  em_i_plan_rc "$1" render > "$em_i_tmp/rc"
+  em_i_write "$1" "$em_i_tmp/rc"
 }
 em_i_names() {
   # The production normalizer is definition-only, also parseable by /bin/sh.
@@ -164,6 +241,12 @@ em_i_main() {
   case "$(uname -s)" in Darwin|Linux) ;; *) em_i_error 'this installer supports macOS and Linux' ;; esac
   [ ! -x /system/bin/getprop ] || em_i_error 'use the documented manual Android installation'
   printf 'EnvManager: %s; shell=%s; directory=%s\n' "$([ "$em_i_remove" = true ] && printf uninstall || printf install)" "$em_i_shell" "$em_i_dir"
+  em_i_paths=$(em_i_rc_files) || return
+  em_i_paths=$(printf '%s\n' "$em_i_paths" | LC_ALL=C sort -u) || return
+  printf '%s\n' "$em_i_paths" | while IFS= read -r em_i_config; do
+    [ -n "$em_i_config" ] || continue
+    em_i_plan_rc "$em_i_config" describe
+  done
   if [ "$em_i_dry" = true ]; then printf 'Dry run: no files, downloads, or shell settings changed.\n'; return; fi
   umask 077
   mkdir -p "$em_i_state"
@@ -182,7 +265,7 @@ em_i_main() {
   trap 'exit 143' HUP TERM
   em_i_tmp=$(mktemp -d "${TMPDIR:-/tmp}/envmanager-install.XXXXXX")
   em_i_stamp=$(date -u +%Y%m%dT%H%M%SZ)-$$
-  em_i_block > "$em_i_tmp/block"
+  printf '%s\n' "$em_i_paths" | sed '/^$/d' > "$em_i_tmp/rc-sorted"
   : > "$em_i_tmp/old-names"
 
   if [ "$em_i_remove" != true ]; then
@@ -235,24 +318,13 @@ em_i_main() {
     else
       printf 'Keeping your custom ~/.envmanagerrc; its checkout path remains under your control.\n'
     fi
-    cp "$em_i_state/rc-files" "$em_i_tmp/rc-files" 2>/dev/null || : > "$em_i_tmp/rc-files"
-    case "$em_i_shell" in bash|both)
-      printf '%s\n' "$HOME/.bashrc" >> "$em_i_tmp/rc-files"
-      em_i_login=$HOME/.bash_profile
-      for em_i_candidate in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do if [ -f "$em_i_candidate" ]; then em_i_login=$em_i_candidate; break; fi; done
-      printf '%s\n' "$em_i_login" >> "$em_i_tmp/rc-files" ;;
-    esac
-    case "$em_i_shell" in zsh|both) printf '%s\n' "${ZDOTDIR:-$HOME}/.zshrc" >> "$em_i_tmp/rc-files" ;; esac
-    LC_ALL=C sort -u "$em_i_tmp/rc-files" > "$em_i_tmp/rc-sorted"
     while IFS= read -r em_i_config; do em_i_edit_rc "$em_i_config"; done < "$em_i_tmp/rc-sorted"
     em_i_write "$em_i_state/rc-files" "$em_i_tmp/rc-sorted"
     printf '%s\n' "$em_i_dir" > "$em_i_tmp/directory"
     em_i_write "$em_i_state/install-directory" "$em_i_tmp/directory"
     printf 'Ready. Open a new shell, then run em_status. Optional tools: em_enable NAME.\n'
   else
-    if [ -f "$em_i_state/rc-files" ]; then
-      while IFS= read -r em_i_config; do em_i_edit_rc "$em_i_config"; done < "$em_i_state/rc-files"
-    fi
+    while IFS= read -r em_i_config; do em_i_edit_rc "$em_i_config"; done < "$em_i_tmp/rc-sorted"
     { printf '# EnvManager managed loader\nENVMANAGER_DIR='; em_i_quote "$em_i_dir"; printf '\nexport ENVMANAGER_DIR\n. "$ENVMANAGER_DIR/envmanagerrc"\n'; } > "$em_i_tmp/loader"
     if [ -f "$HOME/.envmanagerrc" ] && [ ! -L "$HOME/.envmanagerrc" ] && cmp -s "$HOME/.envmanagerrc" "$em_i_tmp/loader"; then
       cp -p "$HOME/.envmanagerrc" "$HOME/.envmanagerrc.envmanager-backup.$em_i_stamp"

@@ -1,4 +1,8 @@
-EnvManager's first public installer release adds repeatable macOS/Linux installation for Bash and Zsh, with a core preset, managed startup blocks, explicit upgrades, and removal of managed integration.
+EnvManager v0.1.1 fixes migration of existing Bash/Zsh startup hooks, including `source "$HOME"/.envmanagerrc`. It adopts the original hook at its existing position and repairs v0.1.0 configurations containing both a legacy hook and an appended managed block.
+
+Dry runs and actual migration share a read-only planner. The installer reports the selected startup file, line, and action; it stops before edits on ambiguous active references, multiple legacy hooks, conflicting markers, and edited managed blocks. No configuration is evaluated during planning.
+
+Regression fixtures check one loader invocation, preserved ordering, and repeated-install stability in Bash and Zsh. The current installer can repair shell integration without updating the existing checkout. Use `--upgrade` separately when checkout updates are intended.
 
 Existing installations retain their module selections and local overrides. Release checkouts pin the published Git commit and skip the daily Git pull updater. Optional tool modules require an explicit choice and can install third-party software when loaded.
 

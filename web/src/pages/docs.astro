@@ -15,10 +15,11 @@ const installer = 'https://projects.envmanager.victorqueiroz.dev/install.sh';
       <tr><td><code>--dir /absolute/path</code></td><td>Choose a checkout location, including paths containing spaces.</td></tr>
       <tr><td><code>--version vX.Y.Z</code></td><td>Choose a published release for a new installation, or combine with an upgrade of a managed release.</td></tr>
       <tr><td><code>--profile core|full</code></td><td>Choose a preset for a new installation. Existing choices use <code>em_enable</code> and <code>em_disable</code>.</td></tr>
-      <tr><td><code>--dry-run</code></td><td>Print the selection without downloads or file changes.</td></tr>
+      <tr><td><code>--dry-run</code></td><td>Report selected startup files, line numbers, and planned migration actions without downloads or file changes.</td></tr>
       <tr><td><code>--upgrade</code></td><td>Upgrade a clean checkout explicitly.</td></tr>
       <tr><td><code>--uninstall</code></td><td>Disconnect managed shell integration while retaining your checkout and tool data.</td></tr>
     </tbody></table>
+    <p>Existing standalone HOME/tilde loader hooks are adopted in place, preserving their original command and startup order. The installer can repair a legacy hook plus the duplicate managed block appended by v0.1.0. Unfamiliar active references, multiple legacy hooks, conflicting markers, and edited managed blocks stop migration for inspection before edits begin. Planning never evaluates shell configuration.</p>
     <h2>Keep paths in order</h2>
     <p>Use <code>em_add_path VARIABLE entry [mode]</code> with PATH, MANPATH, CDPATH, or another colon-separated variable. Entries are literal and do not have to exist. Every successful call exports the variable in your current shell.</p>
     <pre><code>{`# Append an entry, or keep it where it already is (the default).\nem_add_path PATH "$HOME/bin"\n\n# Prepend an absent entry; keep an existing entry in place.\nem_add_path PATH "$HOME/tools/bin" prepend\n\n# Put this entry first, removing its other copies.\nem_add_path PATH "$HOME/preferred/bin" prepend-move\n\n# Preserve system manual paths, including when MANPATH was unset.\nem_add_path MANPATH "$HOME/share/man"`}</code></pre>

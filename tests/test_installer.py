@@ -13,6 +13,16 @@ import unittest
 from helpers import PROJECT, SHELLS
 
 
+# Exact v0.1.0 output, retained as migration input.
+V010_BLOCK = '''# >>> EnvManager >>>
+if [ -n "${BASH_VERSION:-}${ZSH_VERSION:-}" ] && [ "${_ENVMANAGER_STARTUP_PID:-}" != "$$" ] && [ -r "$HOME/.envmanagerrc" ]; then
+  _ENVMANAGER_STARTUP_PID=$$
+  . "$HOME/.envmanagerrc"
+fi
+# <<< EnvManager <<<
+'''
+
+
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, *arguments):
         pass
@@ -101,6 +111,115 @@ ENVMANAGER_AUTO_UPDATE=true
 '''], env=self.environment, text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), [str(self.installation), "1"])
+
+    def dummy_loader(self):
+        (self.home / ".envmanagerrc").write_text('''
+EM_TEST_LOADS=$((${EM_TEST_LOADS:-0}+1))
+EM_TEST_ORDER="${EM_TEST_ORDER-}:load"
+''')
+
+    def assert_loaded_once_in_order(self):
+        for shell in SHELLS:
+            flags = ["-f"] if shell == "zsh" else ["--noprofile", "--norc"]
+            rc = self.home / (".zshrc" if shell == "zsh" else ".bashrc")
+            result = subprocess.run([shutil.which(shell), *flags, "-c", '''
+. "$TEST_RC"
+printf '%s\\n' "$EM_TEST_LOADS" "$EM_TEST_ORDER"
+'''], env=self.environment | {"TEST_RC": str(rc)}, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.splitlines(), ["1", "before:load:after"])
+
+    def test_legacy_hook_quoting_is_adopted_in_place_and_only_runs_once(self):
+        self.install("--shell", "both")
+        self.dummy_loader()
+        hooks = (
+            'source "$HOME"/.envmanagerrc',
+            '. "$HOME"/.envmanagerrc',
+            'source "$HOME/.envmanagerrc"',
+            '. "${HOME}/.envmanagerrc"',
+            'source "${HOME}"/.envmanagerrc',
+            '. ~/.envmanagerrc',
+            '\t source\t"$HOME"/.envmanagerrc  # existing setup',
+            '. "$HOME"/.envmanagerrc; # existing setup',
+        )
+        for hook in hooks:
+            with self.subTest(hook=hook):
+                text = 'EM_TEST_ORDER=before\n' + hook + '\nEM_TEST_ORDER="${EM_TEST_ORDER}:after"\n'
+                for name in (".bashrc", ".zshrc"):
+                    (self.home / name).write_text(text)
+                result = self.install("--shell", "both", "--dry-run")
+                self.assertIn("adopt", result.stdout)
+                self.assertIn(":2:", result.stdout)
+                self.install("--shell", "both")
+                self.assert_loaded_once_in_order()
+                for name in (".bashrc", ".zshrc"):
+                    self.assertIn(hook, (self.home / name).read_text().splitlines())
+                before = self.snapshot()
+                self.install("--shell", "both")
+                self.assertEqual(self.snapshot(), before)
+                self.assert_loaded_once_in_order()
+
+    def test_v010_duplicate_hook_is_repaired_at_the_original_position(self):
+        self.install("--shell", "both")
+        self.dummy_loader()
+        for name in (".bashrc", ".zshrc"):
+            (self.home / name).write_text('''EM_TEST_ORDER=before
+source "$HOME"/.envmanagerrc
+EM_TEST_ORDER="${EM_TEST_ORDER}:after"
+
+''' + V010_BLOCK)
+        result = self.install("--shell", "both")
+        self.assertIn("repair", result.stdout)
+        self.assert_loaded_once_in_order()
+        for name in (".bashrc", ".zshrc"):
+            self.assertEqual((self.home / name).read_text().count("# >>> EnvManager >>>"), 1)
+        before = self.snapshot()
+        self.install("--shell", "both")
+        self.assertEqual(before, self.snapshot())
+        self.assert_loaded_once_in_order()
+
+    def test_ambiguous_references_abort_before_editing_any_startup_file(self):
+        (self.home / ".bashrc").write_text('source "$HOME"/.envmanagerrc\n')
+        rc = self.home / ".zshrc"
+        references = (
+            'source "$(touch "$HOME/should-not-run")/.envmanagerrc"',
+            'eval \'source "$HOME"/.envmanagerrc\'',
+            'source "$ENVMANAGER_DIR/envmanagerrc"',
+            'source "$HOME"/.envmanagerrc && printf more',
+            "source '$HOME/.envmanagerrc'",
+        )
+        for reference in references:
+            for options in (("--dry-run",), ()):
+                with self.subTest(reference=reference, options=options):
+                    rc.write_text("# user configuration\n" + reference + "\n")
+                    before = self.snapshot()
+                    result = self.install("--shell", "both", *options, check=False)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(str(rc) + ":2:", result.stderr)
+                    self.assertIn("unrecognized EnvManager reference", result.stderr)
+                    self.assertEqual(before, self.snapshot())
+                    self.assertFalse(self.installation.exists())
+                    self.assertFalse((self.home / "should-not-run").exists())
+
+    def test_edited_managed_blocks_and_multiple_legacy_hooks_are_not_discarded(self):
+        rc = self.home / ".zshrc"
+        for content in (
+            V010_BLOCK.replace("fi\n", "  CUSTOM=preserved\nfi\n"),
+            'source "$HOME"/.envmanagerrc\n. "$HOME/.envmanagerrc"\n',
+            '# <<< EnvManager <<<\n# >>> EnvManager >>>\n',
+        ):
+            with self.subTest(content=content):
+                rc.write_text(content)
+                before = self.snapshot()
+                result = self.install("--shell", "zsh", check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(before, self.snapshot())
+
+    def test_comments_about_envmanager_do_not_count_as_loader_hooks(self):
+        rc = self.home / ".zshrc"
+        rc.write_text('  # source "$HOME"/.envmanagerrc\n# See envmanagerrc for configuration.\n')
+        self.install("--shell", "zsh")
+        self.assertEqual(rc.read_text().count("# >>> EnvManager >>>"), 1)
 
     def test_symlinked_configuration_permissions_and_zdotdir(self):
         dotdir = self.home / "zsh config"

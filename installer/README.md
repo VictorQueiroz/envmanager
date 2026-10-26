@@ -23,6 +23,23 @@ installer lock prevents concurrent operations. Fresh clones are published by
 renaming a prepared staging directory on the destination filesystem; rerunning
 repairs missing integration without fetching another release.
 
+## Startup migration
+
+A shared read-only planner recognizes standalone `source` and `.` hooks using
+`"$HOME/.envmanagerrc"`, `"$HOME"/.envmanagerrc`, their `${HOME}` equivalents,
+or `~/.envmanagerrc`. Whitespace, a trailing semicolon, and trailing comments
+are supported. The original source command is retained inside the managed guard
+at its existing position. A duplicate managed block from v0.1.0 is removed.
+
+All selected startup files are inspected before installation writes begin.
+Unrecognized active `envmanagerrc` references, multiple legacy hooks, conflicting
+markers, and edited managed blocks stop migration with a file and line number.
+This is a bounded lexical matcher, not a general shell parser; it never sources
+configuration, evaluates expressions, or resolves arbitrary indirection.
+
+`--dry-run` uses the same planner and reports append, adopt, repair, remove, or
+unchanged for each selected startup file without creating files or downloading.
+
 ## Test
 
 ```sh

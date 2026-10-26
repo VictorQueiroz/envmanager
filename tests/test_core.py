@@ -32,6 +32,7 @@ if typeset -f compdef >/dev/null; then exit 15; fi
                     self.assertFalse((self.home / ".tmp").exists())
 
     def test_bootstrap_initializes_defaults(self):
+        (self.repo / "VERSION").write_text("9.8.7\n")
         for shell in SHELLS:
             with self.subTest(shell=shell):
                 result = self.shell(shell, SOURCE_CORE + '''
@@ -40,7 +41,7 @@ command -v znap >/dev/null || exit 10
 sh -c 'printf "%s\\n" "$TMPDIR"'
 ''', extra_env={"TMPDIR": ""})
                 temporary = str(self.home / ".tmp")
-                self.assertEqual(result.stdout.splitlines(), [temporary, "0.1.0", "86400", temporary])
+                self.assertEqual(result.stdout.splitlines(), [temporary, "9.8.7", "86400", temporary])
                 self.assertTrue((self.home / ".tmp").is_dir())
 
     def test_bootstrap_resolves_home_and_xdg_locations(self):

@@ -20,7 +20,7 @@ const installer = 'https://projects.envmanager.victorqueiroz.dev/install.sh';
     <Installer os={os} compact />
     <p>Prefer to read the script before executing it? Download it to a working directory and inspect it first:</p>
     <pre><code>{`curl -fsSL ${installer} -o envmanager-install.sh\nless envmanager-install.sh\nsh envmanager-install.sh --shell ${mac ? 'zsh' : 'bash'}`}</code></pre>
-    <p>Use <code>--dry-run</code> to see the selected shell and install location without downloading anything or changing files. Published releases and checksums are available on <a href="https://github.com/VictorQueiroz/envmanager/releases">GitHub Releases</a>.</p>
+    <p>Use <code>--dry-run</code> to see the selected shell, install location, and planned startup-file actions with line numbers, without downloading anything or changing files. Published releases and checksums are available on <a href="https://github.com/VictorQueiroz/envmanager/releases">GitHub Releases</a>.</p>
     <h2>3. Open a new shell</h2>
     <p>Start a new terminal session and check the loaded helpers:</p>
     <pre><code>{`em_status\nem_add_path PATH "$HOME/bin"\nem_disabled_scripts`}</code></pre>

@@ -42,8 +42,7 @@ _add_pnpm_to_path() {
     return 1
   fi
 
-  PATH="$pnpm_binary_directory:$PATH"
-  export PATH
+  em_add_path PATH "$pnpm_binary_directory" prepend-move
 }
 
 _install_pnpm() {

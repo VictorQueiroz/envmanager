@@ -47,6 +47,24 @@ unset CODEX_HOME CODEX_SQLITE_HOME
 sh -c '[ "$CODEX_HOME" = "$HOME/.codex" ] && [ "$CODEX_SQLITE_HOME" = "$CODEX_HOME" ]'
 [ ! -e "$XDG_DATA_HOME/codex" ]
 
+# Search path modes preserve empty MANPATH fields and export in the caller.
+em_test_search_path=/first:/entry:/last
+em_add_path em_test_search_path /new
+[ "$em_test_search_path" = /first:/entry:/last:/new ]
+em_add_path em_test_search_path /entry prepend
+[ "$em_test_search_path" = /first:/entry:/last:/new ]
+em_add_path em_test_search_path /entry prepend-move
+[ "$em_test_search_path" = /entry:/first:/last:/new ]
+sh -c '[ "$em_test_search_path" = /entry:/first:/last:/new ]'
+unset MANPATH
+em_add_path MANPATH /entry
+[ "$MANPATH" = :/entry ]
+em_add_path MANPATH /entry prepend-move
+[ "$MANPATH" = /entry: ]
+MANPATH=:/entry::/other:/entry:
+em_add_path MANPATH /entry prepend-move
+[ "$MANPATH" = /entry:::/other: ]
+
 em_disable test
 em_is_disabled test
 em_enable test

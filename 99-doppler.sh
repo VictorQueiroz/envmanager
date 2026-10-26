@@ -3,7 +3,7 @@
 em_export_path DOPPLER_INSTALL_DIR "$XDG_DATA_HOME/doppler"
 DOPPLER_BIN="$DOPPLER_INSTALL_DIR/doppler"
 
-export PATH="$DOPPLER_INSTALL_DIR:$PATH"
+em_add_path PATH "$DOPPLER_INSTALL_DIR" prepend-move
 
 if [ ! -f "$DOPPLER_BIN" ]; then
   em_mkdir "$DOPPLER_INSTALL_DIR"

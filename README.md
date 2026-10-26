@@ -127,6 +127,33 @@ Windows detection covers Cygwin, MSYS and MinGW shells. Eligible scripts still
 load in filename order, after core helpers.
 If a compatible script fails, loading stops and returns its failure status.
 
+## Search paths
+
+Use `em_add_path VARIABLE entry [mode]` to add one entry to `PATH`, `MANPATH`,
+`CDPATH`, `PKG_CONFIG_PATH`, or another colon-separated environment variable.
+It updates and exports the variable in the current shell:
+
+| Mode | Entry absent | Entry already present |
+| --- | --- | --- |
+| `append` (default) | Add at the end | Keep its current position |
+| `prepend` | Add at the beginning | Keep its current position |
+| `prepend-move` | Add at the beginning | Move to the beginning, removing other copies |
+
+```sh
+em_add_path PATH "$HOME/bin"
+em_add_path MANPATH "$HOME/share/man" prepend
+em_add_path PATH "$HOME/preferred/bin" prepend-move
+```
+
+Matching uses the complete literal entry, including spaces and glob characters.
+Other entries keep their order and existing empty components are preserved
+(including leading/trailing colons used by `MANPATH`). An unset or empty variable
+starts with just the new entry, except `MANPATH`: its implicit system defaults
+are kept before an appended entry (`:/custom/man`) or after a prepended entry
+(`/custom/man:`). Paths do not have to exist. Empty entries,
+entries containing `:`, invalid variable names, and invalid modes return status 2
+without changing the variable. Repeated calls do not add copies of the entry.
+
 ## Tool paths
 
 Tool configuration, data, installation and cache providers use
@@ -278,7 +305,7 @@ Existing `em_*` functions remain available to the numbered scripts.
 | Module | Responsibility |
 | --- | --- |
 | `lib/platform.sh` | OS, runtime, and architecture detection and overrides |
-| `lib/environment.sh` | Directory creation, variable lookup, fallback selection, exports, environment defaults |
+| `lib/environment.sh` | Directory creation, variable lookup, fallback selection, search paths, exports, environment defaults |
 | `lib/scripts.sh` | Script discovery, name and OS normalization, disabled scripts, loading |
 | `lib/run-every.sh` | Duration parsing, clock access, hashing, expiration checks, throttled execution |
 | `lib/run-concurrent.sh` | Cross-session command concurrency, keyed or based on exact arguments |
@@ -292,7 +319,8 @@ actions use the other modules as documented at the top of each file.
 
 `em_first_nonempty` selects a value; `em_export_alternatives` applies it to the
 current shell. `em_export_path` applies the path selection policy above without
-changing the generic string fallback behavior. `em_normalize_os` accepts an OS
+changing the generic string fallback behavior. `em_add_path` manages entries in
+colon-separated search paths using the policy above. `em_normalize_os` accepts an OS
 name; `em_current_os` queries the host. `em_expiry_pending` accepts the current time and an expiration;
 `em_run_every` reads state and executes commands. `em_now` wraps `date +%s` and
 can be redefined by a test to provide a fixed clock.

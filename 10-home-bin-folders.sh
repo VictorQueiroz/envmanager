@@ -1,6 +1,4 @@
 #!/bin/bash
 
-# If you come from bash you might have to change your $PATH.
-PATH="${PATH}:${HOME}/bin"
-PATH="${PATH}:${HOME}/.local/bin"
-export PATH
+em_add_path PATH "$HOME/bin"
+em_add_path PATH "$HOME/.local/bin"

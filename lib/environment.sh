@@ -78,6 +78,63 @@ em_export_path() {
   em_print 'Configured %s\n' "$var_name"
 }
 
+# Add one literal entry to a colon-separated search path. Existing entries keep
+# their position unless prepend-move is requested; preserve all other fields.
+em_add_path() {
+  [ $# -ge 2 ] && [ $# -le 3 ] && [ -n "$2" ] || return 2
+  case "$1" in
+    ''|[0-9]*|*[!a-zA-Z0-9_]*) return 2 ;;
+  esac
+  case "$2" in *:*) return 2 ;; esac
+  local _em_path_name="$1" _em_path_entry="$2" _em_path_mode="${3-append}"
+  local _em_path_value _em_path_remaining _em_path_component
+  case "$_em_path_mode" in
+    append|prepend|prepend-move) ;;
+    *) return 2 ;;
+  esac
+
+  # Only the validated identifier is evaluated; path values remain literal data.
+  eval '_em_path_value="${'"$_em_path_name"'-}"'
+  if [ "$_em_path_mode" != prepend-move ]; then
+    case ":$_em_path_value:" in
+      *":$_em_path_entry:"*)
+        export "$_em_path_name=$_em_path_value"
+        return
+        ;;
+    esac
+  fi
+
+  if [ -z "$_em_path_value" ]; then
+    # Empty MANPATH means the system's default search path. Keep that implicit
+    # entry on the appropriate side instead of replacing the defaults.
+    case "$_em_path_name:$_em_path_mode" in
+      MANPATH:append) _em_path_value=":$_em_path_entry" ;;
+      MANPATH:*) _em_path_value="$_em_path_entry:" ;;
+      *) _em_path_value="$_em_path_entry" ;;
+    esac
+  else
+    case "$_em_path_mode" in
+      append) _em_path_value="$_em_path_value:$_em_path_entry" ;;
+      prepend) _em_path_value="$_em_path_entry:$_em_path_value" ;;
+      prepend-move)
+        _em_path_remaining="$_em_path_value"
+        _em_path_value="$_em_path_entry"
+        while :; do
+          _em_path_component="${_em_path_remaining%%:*}"
+          if [ "$_em_path_component" != "$_em_path_entry" ]; then
+            _em_path_value="$_em_path_value:$_em_path_component"
+          fi
+          case "$_em_path_remaining" in
+            *:*) _em_path_remaining="${_em_path_remaining#*:}" ;;
+            *) break ;;
+          esac
+        done
+        ;;
+    esac
+  fi
+  export "$_em_path_name=$_em_path_value"
+}
+
 # Configure defaults and create the fallback temporary directory.
 em_init_environment() {
   local os runtime

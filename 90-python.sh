@@ -130,8 +130,7 @@ load_pyenv() {
   fi
 
   # Add `$PYENV_ROOT/bin` to `$PATH`
-  PATH="$PYENV_ROOT/bin:$PATH"
-  export PATH
+  em_add_path PATH "$PYENV_ROOT/bin" prepend-move
 
   znap function _pyenv pyenv 'eval "$(pyenv init -)"'
 }

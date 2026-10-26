@@ -4,10 +4,7 @@
 em_export_path PNPM_HOME "$XDG_DATA_HOME/pnpm"
 for em_pnpm_directory in "$PNPM_HOME" "$PNPM_HOME/bin"; do
   if [ -x "$em_pnpm_directory/pnpm" ]; then
-    case ":$PATH:" in
-      *":$em_pnpm_directory:"*) ;;
-      *) PATH="$em_pnpm_directory:$PATH" ;;
-    esac
+    em_add_path PATH "$em_pnpm_directory" prepend
   fi
 done
 export PATH

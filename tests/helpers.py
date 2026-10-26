@@ -10,7 +10,7 @@ import unittest
 
 PROJECT = Path(__file__).resolve().parents[1]
 SHELLS = [shell for shell in ("bash", "zsh") if shutil.which(shell)]
-MODULES = ("platform", "environment", "scripts", "run-every", "shell")
+MODULES = ("platform", "environment", "scripts", "run-every", "run-concurrent", "shell")
 SOURCE_MODULES = "\n".join(
     f'source "$ENVMANAGER_DIR/lib/{name}.sh" || exit $?' for name in MODULES
 )

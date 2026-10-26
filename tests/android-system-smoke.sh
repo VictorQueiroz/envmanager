@@ -58,6 +58,11 @@ em_run_every 1d em_test_record
 em_run_every 1d em_test_record
 [ "$em_test_count" = 1 ]
 
+em_test_echo() { printf '<%s>\n' "$@"; }
+[ "$(em_run_concurrent --key smoke 1 em_test_echo 'space preserved' '')" = '<space preserved>
+<>' ]
+if em_run_concurrent 1 false; then exit 95; fi
+
 ENVMANAGER_ENABLE_LOGGING=true
 ENVMANAGER_LOG_BACKEND=file
 ENVMANAGER_LOG_FILE="$em_test_root/log with spaces/messages.log"

@@ -120,6 +120,50 @@ An inherited variable also counts as explicit. To recalculate Codex paths in an
 already configured shell, run `unset CODEX_HOME CODEX_SQLITE_HOME` before sourcing
 the loader again. Fresh Termux sessions use Termux's existing `$HOME` directly.
 
+## Limit concurrent commands
+
+Prepend `em_run_concurrent N` to allow at most N matching invocations to run
+at once across shell sessions. Additional calls wait and start when one slot
+opens. `N=1` acts as a mutex. Commands are never skipped.
+
+```sh
+# Match the command and every argument, including empty arguments and spaces.
+em_run_concurrent 2 -- curl -O https://example.com/archive.tar.gz
+
+# Different commands/arguments share one named limit.
+em_run_concurrent --key package-installs 1 -- npm install
+em_run_concurrent --key package-installs 1 -- pip install requests
+```
+
+Use the same N (1–999999999) for every invocation sharing a key. `--key`
+(or `-k`) goes before N; `--` before the command is optional. Without a key,
+the command name and exact argument list determine the group. The working
+directory, environment, and resolved executable path are not part of that
+identity. Explicit keys and automatic command identities are separate groups.
+
+The command receives its original arguments, stdin, stdout, and stderr, and
+the prefix returns its exit status. Shell functions and builtins work too.
+Execution takes place in a subshell, so changes to variables or the current
+directory do not propagate back to the caller. Wrap pipelines or compound
+commands in a function or `sh -c '...'` to limit the whole operation. Commands
+must wait for their own background work before returning.
+
+State is shared in `${XDG_STATE_HOME:-$HOME/.local/state}/envmanager/concurrent`,
+independently of `TMPDIR`. Set `ENVMANAGER_CONCURRENCY_DIR` to an absolute path
+to override it; all participating sessions must use the same local directory.
+State created by this helper is private and stores hashed identities, process
+IDs, and admission tickets, rather than command arguments. SHA-256 requires
+`sha256sum` or `shasum`; no Python or platform-specific lock utility is needed.
+Importing the module does not create state.
+
+Commands retain their slots until they return, even if the invoking shell is
+interrupted or killed. Interrupting the prefix does not cancel its command.
+Abandoned waiting requests are removed by subsequent callers. Live process IDs
+are treated conservatively, so PID reuse after an unclean shutdown can delay
+admission. Do not delete concurrency state while commands are running. Limits
+apply on one host; this is not a distributed lock or a limit on commands invoked
+without the prefix. Nesting the same key can deadlock when all slots are held.
+
 ## Android
 
 Android is an OS, while Termux is an Android runtime. Detection checks Android's
@@ -172,6 +216,7 @@ Existing `em_*` functions remain available to the numbered scripts.
 | `lib/environment.sh` | Directory creation, variable lookup, fallback selection, exports, environment defaults |
 | `lib/scripts.sh` | Script discovery, name and OS normalization, disabled scripts, loading |
 | `lib/run-every.sh` | Duration parsing, clock access, hashing, expiration checks, throttled execution |
+| `lib/run-concurrent.sh` | Cross-session command concurrency, keyed or based on exact arguments |
 | `lib/shell.sh` | Portable logging, optional shell integration, initialization |
 | `lib/shell-zsh.sh` | Zsh-only completion syntax, loaded only by Zsh |
 
@@ -203,8 +248,9 @@ filtering without running installers or fetching updates. Python 3.9 or newer
 is required. Install both shells to exercise both implementations locally.
 
 The suite covers module imports, initialization, environment exports, script
-selection and disabled scripts, completion hooks, lazy loading, and throttling.
-Clock-dependent tests use fixed times and require no sleeps. Tests inspect exports
+selection and disabled scripts, completion hooks, lazy loading, throttling, and
+concurrent commands across shell processes. Throttling tests use fixed times;
+concurrency tests coordinate real processes with explicit release signals. Tests inspect exports
 and loaded functions in the shell process that performs the operation.
 
 The GitHub Actions workflow runs the suite with both shells on native Linux and
@@ -218,6 +264,6 @@ PATH=/system/bin /system/bin/sh tests/android-system-smoke.sh /absolute/checkout
 ```
 
  This checks loading, caller exports/functions, eligibility,
-enable/disable persistence, throttling and file logging without desktop tooling.
+enable/disable persistence, throttling, concurrency and file logging without desktop tooling.
 Desktop mksh checks syntax/behavior; testing `/system/bin/sh` on a real device
 provides the native Android evidence.

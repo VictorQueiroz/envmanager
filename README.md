@@ -27,6 +27,50 @@ starts offline without Git or Python. Desktop auto-updates use a daily
 A first clone needs Git and network access; Android users can instead copy the
 checkout and loader into an app-private writable directory.
 
+## Startup benchmarks (Zsh)
+
+Interactive Zsh startup reports commands taking more than 200 ms, sorted
+slowest first, on stderr at the first prompt. Each row includes the source
+file and absolute line number, plus command text truncated to 100 characters.
+Tracing stops before interactive commands run. Noninteractive shells are quiet;
+Bash and Android's system shell retain their existing startup behavior.
+
+EnvManager starts tracing when its core loads. To also measure plugins and
+other commands that run earlier, put this block at the **top** of `~/.zshrc`:
+
+```sh
+if [ -r "${ENVMANAGER_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/envmanager}/lib/benchmark-zsh.sh" ]; then
+  . "${ENVMANAGER_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/envmanager}/lib/benchmark-zsh.sh"
+  em_benchmark_auto
+fi
+```
+
+Set these before that block (or export them from the parent shell):
+
+```sh
+ENVMANAGER_BENCHMARK_BUDGET_MS=200
+ENVMANAGER_BENCHMARK_MAX_COMMAND_LENGTH=100
+# ENVMANAGER_BENCHMARK=false  # disable automatic profiling
+```
+
+For a bounded manual measurement, source the module and run
+`em_benchmark_start 50`, your commands, then `em_benchmark_stop`. A budget of
+`0` lists all measured commands. The budget accepts nonnegative whole
+milliseconds; the command length accepts 4–99999 characters. Repeated starts
+are harmless, and an existing DEBUG trap is preserved by skipping profiling.
+The profiler requires the normal Zsh `DEBUG_BEFORE_CMD` option.
+
+Timing uses Zsh's builtin high resolution clock and DEBUG hook, with no clock
+process per command. Measurements include tracing overhead. Shell functions,
+sourced files, and eval wrappers with traced children are omitted to avoid
+overlapping rows. Command substitutions, pipelines, and explicit subshells
+are measured as a unit in the parent; commands in those children are not
+listed separately. Command text uses Zsh's reconstructed, unexpanded syntax.
+The startup total covers the time from starting the profiler to the first
+prompt, including work below the threshold; it is not the sum of listed rows.
+An interactive `zsh -lic 'command'` has no prompt, so reports at shell exit
+instead, including that command. No trace file or command history is written.
+
 ## Disable and enable scripts
 
 Run `em_disable sdkman` to skip SDKMAN on future shell loads. Names omit the

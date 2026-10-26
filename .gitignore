@@ -4,3 +4,17 @@
 /.serena/
 __pycache__/
 *.pyc
+/node_modules/
+/web/node_modules/
+/web/dist/
+/web/.astro/
+/web/public/install.sh
+/web/public/releases/
+/web/public/release.json
+/web/public/social.png
+/release-artifacts/
+*.envmanager-backup.*
+/.vercel/
+/web/.vercel/
+/.envmanager-release
+/.envmanager-script-names

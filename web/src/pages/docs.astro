@@ -1,0 +1,41 @@
+---
+import Layout from '../layouts/Layout.astro';
+const installer = 'https://projects.envmanager.victorqueiroz.dev/install.sh';
+---
+<Layout title="Documentation for Bash and Zsh" description="Learn EnvManager's installer options, core preset, path ordering, optional modules, local overrides, concurrency limits, upgrades, and troubleshooting.">
+  <article class="document wrap">
+    <a class="breadcrumb" href="/">ENVMANAGER / DOCUMENTATION</a>
+    <h1>Know your shell setup.</h1>
+    <p class="lead">Plain shell files, a few useful helpers, and explicit choices about what runs.</p>
+    <p>Start with the <a href="/install/macos/">macOS guide</a> or <a href="/install/linux/">Linux guide</a>. EnvManager supports Bash and Zsh on both platforms. The repository also documents Android's separate manual installation.</p>
+    <h2 id="installation-behavior">Installation behavior</h2>
+    <p>The installer reuses recognized installations and preserves local choices. New installations use the core preset. That preset includes environment initialization, user binary directories, and shared telemetry preferences; it disables the optional tool recipes. The full preset enables those recipes for future shell loads and is intended for users who have reviewed them.</p>
+    <table><thead><tr><th>Option</th><th>Behavior</th></tr></thead><tbody>
+      <tr><td><code>--shell auto|bash|zsh|both</code></td><td>Choose the shell integration. Automatic uses your login-shell environment.</td></tr>
+      <tr><td><code>--dir /absolute/path</code></td><td>Choose a checkout location, including paths containing spaces.</td></tr>
+      <tr><td><code>--version vX.Y.Z</code></td><td>Choose a published release for a new installation, or combine with an upgrade of a managed release.</td></tr>
+      <tr><td><code>--profile core|full</code></td><td>Choose a preset for a new installation. Existing choices use <code>em_enable</code> and <code>em_disable</code>.</td></tr>
+      <tr><td><code>--dry-run</code></td><td>Print the selection without downloads or file changes.</td></tr>
+      <tr><td><code>--upgrade</code></td><td>Upgrade a clean checkout explicitly.</td></tr>
+      <tr><td><code>--uninstall</code></td><td>Disconnect managed shell integration while retaining your checkout and tool data.</td></tr>
+    </tbody></table>
+    <h2>Keep paths in order</h2>
+    <p>Use <code>em_add_path VARIABLE entry [mode]</code> with PATH, MANPATH, CDPATH, or another colon-separated variable. Entries are literal and do not have to exist. Every successful call exports the variable in your current shell.</p>
+    <pre><code>{`# Append an entry, or keep it where it already is (the default).\nem_add_path PATH "$HOME/bin"\n\n# Prepend an absent entry; keep an existing entry in place.\nem_add_path PATH "$HOME/tools/bin" prepend\n\n# Put this entry first, removing its other copies.\nem_add_path PATH "$HOME/preferred/bin" prepend-move\n\n# Preserve system manual paths, including when MANPATH was unset.\nem_add_path MANPATH "$HOME/share/man"`}</code></pre>
+    <p>Other entries retain their order. Existing empty components are preserved. Empty entries, entries containing a colon, invalid variable names, and unknown modes return status 2.</p>
+    <h2>Choose modules deliberately</h2>
+    <pre><code>{`em_status\nem_disabled_scripts\nem_enable nvm python\nem_disable tmux\n\n# Apply configuration again in this shell, when intended.\nem_load_scripts`}</code></pre>
+    <p>Enable and disable operations change future loads; enabling does not immediately run an installer. Names omit the numeric prefix and platform suffix: <code>em_disable gpg</code> covers its OS variants. Optional modules include Node/NVM, Python, pnpm, tmux, SDKMAN, and tool-specific environment settings. Some modules install software or clone configuration; inspect the corresponding script before enabling it.</p>
+    <h2>Local configuration</h2>
+    <p>Set explicit environment preferences before the loader runs. Tool path helpers preserve nonempty values and reuse existing tool homes before selecting new XDG locations. Keep machine-specific code in a top-level <code>*.local.sh</code> file in your checkout; these files are ignored by Git.</p>
+    <p>Eligible scripts load in global filename order. A matching <code>01-example.local.sh</code> sorts before <code>01-example.sh</code>; local suffixes do not imply a later override pass. Use a later numeric prefix when you need a later assignment.</p>
+    <h2>Limit concurrent commands</h2>
+    <pre><code>{`# At most two invocations share this slot group across shells.\nem_run_concurrent --key builds 2 npm run build\n\n# Without a key, the exact command and arguments identify the group.\nem_run_concurrent 1 -- my-command "argument with spaces"`}</code></pre>
+    <p>Waiting commands run when a slot opens. Use the same limit for each invocation sharing a key. Commands keep their arguments, I/O, and exit status, and execute in a subshell. Changes to variables or directories do not propagate to the caller. This is a single-host limit; nesting the same key can deadlock when all slots are held.</p>
+    <h2>Startup timing in Zsh</h2>
+    <p>Interactive Zsh startup reports commands exceeding the configured timing budget at the first prompt. Set <code>ENVMANAGER_BENCHMARK=false</code> before loading EnvManager to disable it, or change <code>ENVMANAGER_BENCHMARK_BUDGET_MS</code>. Noninteractive shells remain quiet. The <a href="https://github.com/VictorQueiroz/envmanager#startup-benchmarks-zsh">repository guide</a> explains the measured scope and tracing overhead.</p>
+    <h2>Troubleshooting</h2>
+    <ul><li><strong>Missing Git or downloader:</strong> install Git and curl or wget, then rerun the installer.</li><li><strong>Missing startup integration:</strong> rerun the original command with the same shell selection. An installed release is reused.</li><li><strong>Modified checkout during upgrade:</strong> preserve or commit local changes first. Keep personal scripts in ignored <code>*.local.sh</code> files.</li><li><strong>Installer lock:</strong> a live installer keeps its lock. A stale PID lock is recovered on the next run; an incomplete or unexpected lock asks for inspection.</li><li><strong>Module failure:</strong> disable the named module and check its prerequisites and source. The core preset is the small starting point.</li><li><strong>Unmatched managed markers:</strong> inspect the marked block in the reported file. The installer stops instead of discarding the rest of that file.</li></ul>
+    <p>For the complete implementation and platform policy, read the <a href="https://github.com/VictorQueiroz/envmanager">source repository</a>. For release history and checksums, visit <a href="https://github.com/VictorQueiroz/envmanager/releases">GitHub Releases</a>.</p>
+  </article>
+</Layout>

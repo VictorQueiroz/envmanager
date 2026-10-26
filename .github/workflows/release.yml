@@ -1,0 +1,64 @@
+name: Publish release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install Linux test shells
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh mksh
+      - name: Validate shell runtime and repeatable installer
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s tests -v
+      - name: Android shell compatibility
+        if: runner.os == 'Linux'
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: mksh tests/android-system-smoke.sh "$PWD"
+      - run: npm ci --prefix web
+      - run: npm run build --prefix web
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify version and package tested source
+        run: |
+          test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
+          python3 installer/package-release.py "$RUNNER_TEMP/release"
+      - name: Publish versioned downloads and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --json isDraft > "$RUNNER_TEMP/release-state.json" 2>/dev/null; then
+            if grep -q '"isDraft":false' "$RUNNER_TEMP/release-state.json"; then
+              echo "Release already published; immutable assets retained."
+              exit 0
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "EnvManager $GITHUB_REF_NAME" --notes-file installer/RELEASE.md
+          fi
+          gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/"* --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest

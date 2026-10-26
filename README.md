@@ -2,30 +2,59 @@
 
 ## Installation
 
-### 1. Install the checkout and loader
+Use the [macOS guide](https://projects.envmanager.victorqueiroz.dev/install/macos/)
+or [Linux guide](https://projects.envmanager.victorqueiroz.dev/install/linux/).
+The installer needs Git and curl (or wget); end users do not need Node.js or Python.
+
+```sh
+curl -fsSL https://projects.envmanager.victorqueiroz.dev/install.sh | sh
+```
+
+Inspect [the installer](installer/install.sh), or run it with `--dry-run`, before
+installing. New installations use the core preset: environment initialization,
+user binary paths, and telemetry preferences. Optional tool recipes are disabled;
+`em_enable NAME` opts in for future loads. Some recipes install third-party tools
+or clone configuration. Existing installations keep their module choices.
+
+The installer reuses recognized checkouts, preserves custom loaders and symlinked
+dotfiles, and maintains managed startup blocks for Bash/Zsh. Repeating an install
+is a no-op; missing integration can be repaired. Set `ENVMANAGER_DIR` or use
+`--dir /absolute/path` for a custom checkout, and `--shell bash|zsh|both` for an
+explicit shell selection. Zsh respects `ZDOTDIR`.
+
+Release installs pin a verified tag/commit and skip daily Git pull updates.
+Upgrade explicitly or disconnect managed shell integration:
+
+```sh
+curl -fsSL https://projects.envmanager.victorqueiroz.dev/install.sh | sh -s -- --upgrade
+curl -fsSL https://projects.envmanager.victorqueiroz.dev/install.sh | sh -s -- --uninstall
+```
+
+Uninstall retains the checkout, local overrides, edited loaders, and tool data.
+See [installer behavior and release packaging](installer/README.md) for options,
+backups, conflict handling, and checksums.
+
+### Manual installation, including Android
 
 ```sh
 git clone https://github.com/VictorQueiroz/envmanager.git "${XDG_CONFIG_HOME:-$HOME/.config}/envmanager"
 cp "${XDG_CONFIG_HOME:-$HOME/.config}/envmanager/envmanagerrc" "$HOME/.envmanagerrc"
 ```
 
-For an existing installation, back up `~/.envmanagerrc`, update the checkout,
-and copy the versioned `envmanagerrc` over the old loader. Preserve any local
-settings before the loader is sourced. `ENVMANAGER_DIR` can select another checkout.
-
-### 2. Source it from your shell configuration
+For an existing manual installation, back up `~/.envmanagerrc` before replacing
+it, and preserve local settings before sourcing the loader. Add this to the
+appropriate shell startup file:
 
 ```sh
 . "$HOME/.envmanagerrc"
 ```
 
-Use `~/.bashrc` or `~/.zshrc` for Bash/Zsh. For Android's system shell, source the
-loader explicitly or from your own shell's startup file. An existing checkout
-starts offline without Git or Python. Desktop auto-updates use a daily
-`git pull --ff-only`; Android auto-updates are off by default. Set
-`ENVMANAGER_AUTO_UPDATE=false` to disable them on any OS, or `true` to opt in.
-A first clone needs Git and network access; Android users can instead copy the
-checkout and loader into an app-private writable directory.
+Use `~/.bashrc` or `~/.zshrc` for Bash/Zsh. Android's system shell can source the
+loader explicitly or from its own startup file. Android can load a copied checkout
+offline without Git or Python. Manual branch installations on desktop OSes keep
+the daily fast-forward Git updater; set `ENVMANAGER_AUTO_UPDATE=false` to disable
+it. Android auto-updates remain off by default. The public installer targets
+macOS/Linux Bash and Zsh; see the Android section below for its runtime policy.
 
 ## Startup benchmarks (Zsh)
 

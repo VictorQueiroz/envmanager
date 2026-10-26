@@ -185,6 +185,9 @@ em_init_environment() {
 
   ENVMANAGER_SYSTEMD_IDENTIFIER=envmanager
   ENVMANAGER_VERSION="0.0.1"
+  if [ -r "$ENVMANAGER_DIR/VERSION" ]; then
+    IFS= read -r ENVMANAGER_VERSION < "$ENVMANAGER_DIR/VERSION" || return
+  fi
   ENVMANAGER_ENABLE_LOGGING="${ENVMANAGER_ENABLE_LOGGING:-false}"
 
   # Default interval before a throttled command may run again.

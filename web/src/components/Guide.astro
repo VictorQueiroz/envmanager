@@ -1,0 +1,40 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Installer from './Installer.astro';
+const { os } = Astro.props;
+const mac = os === 'macos';
+const name = mac ? 'macOS' : 'Linux';
+const installer = 'https://projects.envmanager.victorqueiroz.dev/install.sh';
+---
+<Layout title={`Install EnvManager on ${name}`} description={`Set up EnvManager on ${name} with Bash or Zsh. Check prerequisites, inspect the installer, verify your setup, and learn how to upgrade or uninstall safely.`}>
+  <article class="document wrap">
+    <a class="breadcrumb" href="/">ENVMANAGER / INSTALLATION</a>
+    <h1>Feel at home on {name}.</h1>
+    <p class="lead">A repeatable setup for your shell, with your existing configuration kept in place.</p>
+    <div class="guide-switch"><a href="/install/macos/" aria-current={mac ? 'page' : undefined}>macOS</a><a href="/install/linux/" aria-current={!mac ? 'page' : undefined}>Linux</a></div>
+    <h2>1. Check the essentials</h2>
+    {mac ? <p>Use Terminal or your preferred terminal app. Zsh and Bash are supported. You need Git and either curl or wget. If Git is missing, follow the <a href="https://git-scm.com/downloads/mac">Git for macOS instructions</a>, including the Apple Command Line Tools option.</p> : <p>Use a terminal running Bash or Zsh. Install Git and curl (or wget) with your distribution's package manager if they are missing. The <a href="https://git-scm.com/downloads/linux">Git for Linux instructions</a> cover common distributions. This installer targets desktop/server Linux; Android has a separate manual setup in the repository.</p>}
+    <pre><code>{`git --version\ncurl --version\nprintf '%s\n' "$SHELL"`}</code></pre>
+    <h2>2. Choose your shell and install</h2>
+    <p>The default is the shell named by <code>$SHELL</code>, with Bash as a fallback. You can select Bash, Zsh, or both below. The installer itself runs under <code>sh</code> and does not require Node.js, npm, or Python.</p>
+    <Installer os={os} compact />
+    <p>Prefer to read the script before executing it? Download it to a working directory and inspect it first:</p>
+    <pre><code>{`curl -fsSL ${installer} -o envmanager-install.sh\nless envmanager-install.sh\nsh envmanager-install.sh --shell ${mac ? 'zsh' : 'bash'}`}</code></pre>
+    <p>Use <code>--dry-run</code> to see the selected shell and install location without downloading anything or changing files. Published releases and checksums are available on <a href="https://github.com/VictorQueiroz/envmanager/releases">GitHub Releases</a>.</p>
+    <h2>3. Open a new shell</h2>
+    <p>Start a new terminal session and check the loaded helpers:</p>
+    <pre><code>{`em_status\nem_add_path PATH "$HOME/bin"\nem_disabled_scripts`}</code></pre>
+    <p>A fresh installation starts with the core preset: environment defaults, user binary directories, and shared telemetry opt-out preferences. Optional tool modules are disabled. Existing installations retain their own enabled and disabled modules.</p>
+    <p class="callout">Enabling an optional tool module can download third-party software or apply that module's configuration the next time it loads. Read its source and prerequisites before choosing it.</p>
+    <pre><code>{`# Opt into a module for future loads.\nem_enable nvm\n\n# Disable a module again.\nem_disable nvm`}</code></pre>
+    <h2>What the installer changes</h2>
+    <ul><li>A release checkout at <code>{'${XDG_CONFIG_HOME:-$HOME/.config}/envmanager'}</code>, or your <code>--dir</code> location.</li><li>A small managed loader at <code>~/.envmanagerrc</code> when no custom loader exists.</li><li>One managed block in the selected shell's startup files. Bash login and interactive startup share a per-process guard; Zsh respects <code>ZDOTDIR</code>.</li><li>Installer state under <code>{'${XDG_STATE_HOME:-$HOME/.local/state}/envmanager'}</code>. Existing files are backed up only when their contents change.</li></ul>
+    <p>Re-running the same installation is a no-op. Missing integration files can be repaired without downloading another release. Symlinked dotfiles keep their links and file permissions. The installer never sources your shell configuration while installing.</p>
+    <h2>Upgrade when you choose</h2>
+    <pre><code>{`curl -fsSL ${installer} | sh -s -- --upgrade`}</code></pre>
+    <p>Release installations are pinned to a published tag and verified commit. They skip the daily Git pull updater. An explicit upgrade preserves local overrides and module choices; new optional modules start disabled in the core preset. Modified checkouts report a conflict so you can preserve your work first. Existing branch-based installations keep their branch and use fast-forward updates.</p>
+    <h2>Remove the shell integration</h2>
+    <pre><code>{`curl -fsSL ${installer} | sh -s -- --uninstall`}</code></pre>
+    <p>Uninstall removes managed startup blocks and an unchanged managed loader. It retains the checkout, edited loaders, local overrides, and tool data. Open a new shell afterward. See <a href="/docs/">the documentation</a> for configuration options and troubleshooting.</p>
+  </article>
+</Layout>

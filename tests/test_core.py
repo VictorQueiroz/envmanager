@@ -40,7 +40,7 @@ command -v znap >/dev/null || exit 10
 sh -c 'printf "%s\\n" "$TMPDIR"'
 ''', extra_env={"TMPDIR": ""})
                 temporary = str(self.home / ".tmp")
-                self.assertEqual(result.stdout.splitlines(), [temporary, "0.0.1", "86400", temporary])
+                self.assertEqual(result.stdout.splitlines(), [temporary, "0.1.0", "86400", temporary])
                 self.assertTrue((self.home / ".tmp").is_dir())
 
     def test_bootstrap_resolves_home_and_xdg_locations(self):

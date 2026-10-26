@@ -1,0 +1,13 @@
+{
+  "name": "envmanager-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1",
+    "build": "node scripts/prepare.mjs && astro build && node scripts/check.mjs",
+    "preview": "astro preview --host 127.0.0.1"
+  },
+  "dependencies": { "astro": "7.4.2", "@astrojs/sitemap": "3.7.4", "sharp": "0.35.5" }
+}

@@ -24,6 +24,8 @@ envmanager_load() {
   if [ -z "$auto_update" ]; then
     if [ "$os" = android ]; then auto_update=false; else auto_update=true; fi
   fi
+  # Release installations are pinned; the installer owns explicit upgrades.
+  if [ -f "$ENVMANAGER_DIR/.envmanager-release" ]; then auto_update=false; fi
   if [ "$auto_update" = true ] && command -v git >/dev/null 2>&1; then
     em_run_every 1d git -C "$ENVMANAGER_DIR" pull --ff-only
   fi

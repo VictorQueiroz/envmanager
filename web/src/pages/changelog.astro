@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Changelog and releases" description="EnvManager release history: installer behavior, shell compatibility, path management, and upgrades. Find tagged releases and published checksums.">
+  <article class="document wrap">
+    <a class="breadcrumb" href="/">ENVMANAGER / CHANGELOG</a>
+    <h1>A small record of progress.</h1>
+    <p class="lead">Versioned releases, explicit upgrades, and a clear account of what changed.</p>
+    <h2>v0.1.0 <span class="quiet-tag">Initial installer release</span></h2>
+    <p>The first public installer release brings the existing EnvManager shell helpers together with a repeatable macOS/Linux setup flow and dedicated documentation.</p>
+    <ul><li>A POSIX installer with Bash/Zsh integration, custom directories, release pinning, dry runs, upgrades, and removal of managed integration.</li><li>A core preset for fresh installations. Existing checkouts retain their module choices.</li><li>Repeat-install checks, symlink and permission preservation, backups on changes, and verification of published Git commits.</li><li>Explicit updates for release checkouts; the normal branch-based updater remains available to existing installations.</li><li>Documentation for ordered path additions, MANPATH defaults, optional modules, local overrides, and cross-session concurrency.</li><li>A static website with separate macOS and Linux installation pages, canonical URLs, social metadata, robots directives, and a sitemap.</li></ul>
+    <p>See <a href="https://github.com/VictorQueiroz/envmanager/releases/tag/v0.1.0">the tagged release</a> for the release archive, installer, manifest, and SHA-256 checksums. Upgrade with the installer’s <code>--upgrade</code> option after preserving local changes in your checkout.</p>
+    <h2>Follow the implementation</h2>
+    <p>Individual changes and validation runs are recorded in the <a href="https://github.com/VictorQueiroz/envmanager/commits/master/">Git history</a> and <a href="https://github.com/VictorQueiroz/envmanager/actions">GitHub Actions</a>. The <a href="/docs/">documentation</a> describes current behavior, including the distinction between core configuration and optional tool installation.</p>
+    <a class="button" href="/install/macos/">Install EnvManager →</a>
+  </article>
+</Layout>

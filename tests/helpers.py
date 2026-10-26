@@ -33,6 +33,7 @@ class ShellTestCase(unittest.TestCase):
         self.repo.mkdir(parents=True)
         shutil.copy2(PROJECT / "00-core.sh", self.repo)
         shutil.copy2(PROJECT / "envmanagerrc", self.repo)
+        shutil.copy2(PROJECT / "VERSION", self.repo)
         for directory in ("lib", "completions"):
             if (PROJECT / directory).is_dir():
                 shutil.copytree(PROJECT / directory, self.repo / directory)

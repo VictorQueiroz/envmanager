@@ -1,0 +1,55 @@
+---
+import '../styles/global.css';
+interface Props { title: string; description: string; }
+const { title, description } = Astro.props;
+const site = 'https://projects.envmanager.victorqueiroz.dev';
+const canonical = new URL(Astro.url.pathname, site).href;
+const preview = process.env.VERCEL_ENV === 'preview';
+const schema = [
+  { '@context': 'https://schema.org', '@type': 'WebSite', name: 'EnvManager', url: site },
+  { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'EnvManager',
+    applicationCategory: 'DeveloperApplication', operatingSystem: 'macOS, Linux',
+    description: 'Portable shell environment configuration for Bash and Zsh.', url: site,
+    downloadUrl: `${site}/install.sh` },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — EnvManager</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f5f4ef" />
+    <meta name="robots" content={preview ? 'noindex, nofollow' : 'index, follow'} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="EnvManager" />
+    <meta property="og:title" content={`${title} — EnvManager`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={`${site}/social.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header wrap">
+      <a class="wordmark" href="/" aria-label="EnvManager home"><span class="brand-mark">e<span>m</span></span><span>EnvManager</span></a>
+      <nav aria-label="Main navigation">
+        <a href="/docs/" aria-current={Astro.url.pathname === '/docs/' ? 'page' : undefined}>Documentation</a>
+        <a href="/changelog/">Changelog</a>
+        <a class="github-link" href="https://github.com/VictorQueiroz/envmanager">GitHub <span aria-hidden="true">↗</span></a>
+        <a class="button button-small" href="/install/macos/">Get started <span aria-hidden="true">→</span></a>
+      </nav>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site-footer wrap">
+      <div><a class="wordmark" href="/"><span class="brand-mark">e<span>m</span></span>EnvManager</a><p>A little order for your everyday shell.</p></div>
+      <div class="footer-links"><a href="/install/macos/">macOS</a><a href="/install/linux/">Linux</a><a href="/docs/">Documentation</a><a href="https://github.com/VictorQueiroz/envmanager">Source code ↗</a></div>
+      <span class="footer-note">Built for Bash & Zsh.<br />Made by <a href="https://victorqueiroz.dev">Victor Queiroz</a>.</span>
+    </footer>
+  </body>
+</html>

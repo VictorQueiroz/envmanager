@@ -1,0 +1,37 @@
+---
+const { os = 'macos', compact = false } = Astro.props;
+const command = 'curl -fsSL https://projects.envmanager.victorqueiroz.dev/install.sh | sh -s -- --shell auto';
+---
+<section class:list={['installer', { compact }]} aria-labelledby="install-heading" data-installer>
+  <div class="installer-top"><div><span class="eyebrow">YOUR NEXT SHELL STARTS HERE</span><h2 id="install-heading">Make yourself at home.</h2></div><span class="quiet-tag">Core preset</span></div>
+  <div class="installer-controls">
+    <div class="os-switch" aria-label="Operating system">
+      <button type="button" data-os="macos" aria-pressed={os === 'macos'}>macOS</button>
+      <button type="button" data-os="linux" aria-pressed={os === 'linux'}>Linux</button>
+    </div>
+    <label>Shell <select data-shell aria-label="Choose your shell"><option value="auto">Automatic</option><option value="zsh">Zsh</option><option value="bash">Bash</option><option value="both">Bash + Zsh</option></select></label>
+  </div>
+  <div class="install-command"><span class="prompt" aria-hidden="true">$</span><code data-command>{command}</code><button type="button" class="copy-button" data-copy aria-label="Copy installation command">Copy <span aria-hidden="true">⧉</span></button></div>
+  <p class="installer-note"><span class="status-dot"></span> No sudo. Repeatable installation. Optional tools stay opt-in.</p>
+  <div class="installer-bottom"><a data-guide href={os === 'linux' ? '/install/linux/' : '/install/macos/'}>Read the {os === 'linux' ? 'Linux' : 'macOS'} installation guide <span aria-hidden="true">↗</span></a><a href="/install.sh">Inspect the installer</a></div>
+  <p class="copy-status" data-status role="status" aria-live="polite"></p>
+</section>
+<script>
+  for (const panel of document.querySelectorAll<HTMLElement>('[data-installer]')) {
+    const command = panel.querySelector<HTMLElement>('[data-command]')!;
+    const shell = panel.querySelector<HTMLSelectElement>('[data-shell]')!;
+    const guide = panel.querySelector<HTMLAnchorElement>('[data-guide]')!;
+    const status = panel.querySelector<HTMLElement>('[data-status]')!;
+    shell.addEventListener('change', () => { command.textContent = `curl -fsSL https://projects.envmanager.victorqueiroz.dev/install.sh | sh -s -- --shell ${shell.value}`; });
+    for (const button of panel.querySelectorAll<HTMLButtonElement>('[data-os]')) button.addEventListener('click', () => {
+      for (const sibling of panel.querySelectorAll('[data-os]')) sibling.setAttribute('aria-pressed', String(sibling === button));
+      const os = button.dataset.os!;
+      guide.href = `/install/${os}/`;
+      guide.textContent = `Read the ${os === 'linux' ? 'Linux' : 'macOS'} installation guide ↗`;
+    });
+    panel.querySelector('[data-copy]')!.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(command.textContent!); status.textContent = 'Installation command copied.'; }
+      catch { status.textContent = 'Select and copy the command above.'; }
+    });
+  }
+</script>

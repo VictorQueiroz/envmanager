@@ -15,7 +15,31 @@ em_android_sdk() {
   /system/bin/getprop ro.build.version.sdk 2>/dev/null
 }
 
+# Cache only inside an explicit operation. Overrides changed by a sourced
+# script invalidate the snapshot immediately; the next operation detects anew.
+em_platform_cache_valid() {
+  [ "${_EM_PLATFORM_CACHE:-false}" = true ] &&
+    [ "${ENVMANAGER_OS:-}" = "$_EM_PLATFORM_INPUT_OS" ] &&
+    [ "${ENVMANAGER_RUNTIME:-}" = "$_EM_PLATFORM_INPUT_RUNTIME" ] &&
+    [ "${TERMUX_VERSION:-}" = "$_EM_PLATFORM_INPUT_TERMUX" ] &&
+    [ "${PREFIX:-}" = "$_EM_PLATFORM_INPUT_PREFIX" ]
+}
+
+em_with_platform() {
+  local _EM_PLATFORM_CACHE=false _EM_PLATFORM_OS="" _EM_PLATFORM_RUNTIME=""
+  local _EM_PLATFORM_INPUT_OS="${ENVMANAGER_OS:-}" _EM_PLATFORM_INPUT_RUNTIME="${ENVMANAGER_RUNTIME:-}"
+  local _EM_PLATFORM_INPUT_TERMUX="${TERMUX_VERSION:-}" _EM_PLATFORM_INPUT_PREFIX="${PREFIX:-}"
+  _EM_PLATFORM_OS="$(em_current_os)" || return
+  _EM_PLATFORM_CACHE=true
+  _EM_PLATFORM_RUNTIME="$(em_current_runtime)" || return
+  "$@"
+}
+
 em_current_os() {
+  if em_platform_cache_valid && [ -n "${_EM_PLATFORM_OS:-}" ]; then
+    printf '%s\n' "$_EM_PLATFORM_OS"
+    return
+  fi
   local os sdk
   if [ -n "${ENVMANAGER_OS:-}" ]; then
     os="$(em_normalize_os "$ENVMANAGER_OS")"
@@ -40,6 +64,10 @@ em_current_os() {
 }
 
 em_current_runtime() {
+  if em_platform_cache_valid && [ -n "${_EM_PLATFORM_RUNTIME:-}" ]; then
+    printf '%s\n' "$_EM_PLATFORM_RUNTIME"
+    return
+  fi
   local os
   os="$(em_current_os)" || return
   case "${ENVMANAGER_RUNTIME:-}" in

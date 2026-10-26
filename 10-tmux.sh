@@ -91,8 +91,9 @@ clone_personal_config() {
   local tmux_config_git_repo="https://github.com/VictorQueiroz/tmux"
 
   if [ -d "$tmux_config_dir" ]; then
-    git -C "$tmux_config_dir" fetch --quiet --all
-    git -C "$tmux_config_dir" pull --quiet --all
+    # Keep network updates out of most shell startups.
+    em_run_every 2d git -C "$tmux_config_dir" fetch --quiet --all
+    em_run_every 2d git -C "$tmux_config_dir" pull --quiet --all
   else
     git clone --quiet "$tmux_config_git_repo" "$tmux_config_dir"
   fi

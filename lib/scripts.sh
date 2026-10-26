@@ -53,8 +53,13 @@ em_script_unsupported_reason() {
   name="$(em_script_name "$1")"
   script_os="$(em_script_os "$1")"
   script_runtime="$(em_script_runtime "$1")"
-  os="$(em_current_os)" || return
-  runtime="$(em_current_runtime)" || return
+  if em_platform_cache_valid; then
+    os="$_EM_PLATFORM_OS"
+    runtime="$_EM_PLATFORM_RUNTIME"
+  else
+    os="$(em_current_os)" || return
+    runtime="$(em_current_runtime)" || return
+  fi
   if [ -n "$script_os" ] && [ "$script_os" != "$os" ]; then
     printf 'requires OS %s\n' "$script_os"
     return
@@ -153,7 +158,7 @@ em_print_available_script_name() {
 
 # Use the same compatibility policy for loading and completion suggestions.
 em_available_script_names() {
-  em_each_script em_print_available_script_name | sort -u
+  em_with_platform em_each_script em_print_available_script_name | sort -u
 }
 
 em_script_exists() {
@@ -274,7 +279,7 @@ em_load_script() {
 }
 
 em_load_scripts() {
-  em_each_script em_load_script
+  em_with_platform em_each_script em_load_script
 }
 
 em_script_status() {

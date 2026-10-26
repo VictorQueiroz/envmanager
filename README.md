@@ -164,6 +164,27 @@ An inherited variable also counts as explicit. To recalculate Codex paths in an
 already configured shell, run `unset CODEX_HOME CODEX_SQLITE_HOME` before sourcing
 the loader again. Fresh Termux sessions use Termux's existing `$HOME` directly.
 
+NVM and Node remain available as soon as startup finishes. For a numeric default
+with exactly one matching installed modern Node version, startup resolves that
+version with shell builtins and lets NVM activate it. An already active Node
+version is preserved. Named/LTS aliases, alias chains, ambiguous matches, and
+legacy Node layouts use normal NVM initialization. Set
+`ENVMANAGER_NVM_FAST_STARTUP=false` before loading envmanager to always use normal
+NVM initialization.
+
+On Zsh, EnvManager also backports NVM's builtin `printf` output helper before
+automatic activation. It replaces only the recognized legacy helper; custom
+and already-fixed helpers are preserved. NVM's original automatic initializer
+still selects and activates the version, including named/LTS aliases. Installed
+NVM files are left intact. `ENVMANAGER_NVM_FAST_STARTUP=false` disables this
+backport too.
+
+OS and runtime detection are cached in memory for each script-loading or
+completion pass. Changes to `ENVMANAGER_OS`, `ENVMANAGER_RUNTIME`, `TERMUX_VERSION`
+or `PREFIX` invalidate the snapshot immediately. The next pass detects again;
+standalone platform queries stay fresh. This cache does not write files or
+change the execution/output semantics of `em_run_every`.
+
 ## Limit concurrent commands
 
 Prepend `em_run_concurrent N` to allow at most N matching invocations to run

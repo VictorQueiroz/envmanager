@@ -2,6 +2,59 @@
 
 em_export_path NVM_DIR "$XDG_DATA_HOME/nvm" "${HOME:+$HOME/.nvm}"
 
+# Resolve only an unambiguous numeric default using shell builtins. Named/LTS
+# aliases, alias chains and multiple matching installations stay with NVM.
+em_nvm_default_version() {
+  local requested candidate version resolved=""
+  [ -r "$NVM_DIR/alias/default" ] || return 1
+  IFS= read -r requested < "$NVM_DIR/alias/default" || [ -n "$requested" ] || return 1
+  requested="${requested#v}"
+  case "$requested" in
+    ''|*[!0-9.]*|.*|*.|*..*|*.*.*.*) return 1 ;;
+    0|0.*|1|1.*|2|2.*|3|3.*) return 1 ;; # legacy Node/io.js layouts
+  esac
+  [ ! -e "$NVM_DIR/alias/$requested" ] && [ ! -e "$NVM_DIR/alias/v$requested" ] || return 1
+  if [ -n "${ZSH_VERSION:-}" ]; then setopt localoptions nonomatch; fi
+  for candidate in "$NVM_DIR"/versions/node/v*; do
+    [ -d "$candidate" ] || continue
+    version="${candidate##*/v}"
+    case "$version" in
+      ''|*[!0-9.]*|.*|*.|*..*|*.*.*.*) continue ;;
+    esac
+    case "$version" in *.*.*) ;; *) continue ;; esac
+    case "$version" in
+      "$requested"|"$requested".*)
+        [ -z "$resolved" ] || return 1
+        resolved="v$version" ;;
+    esac
+  done
+  [ -n "$resolved" ] && [ -x "$NVM_DIR/versions/node/$resolved/bin/node" ] || return 1
+  printf '%s\n' "$resolved"
+}
+
+# Backport NVM's Zsh output optimization only for the known legacy helper.
+# Compare parsed function bodies so custom and already-fixed helpers survive.
+em_nvm_enable_builtin_printf() {
+  [ -n "${ZSH_VERSION:-}" ] || return 0
+  local original expected
+  original="$(typeset -f nvm_echo)" || return 0
+  expected="$(
+    em_nvm_legacy_echo() { command printf %s\\n "$*" 2>/dev/null; }
+    typeset -f em_nvm_legacy_echo
+  )" || return 0
+  [ "${original#*\{}" = "${expected#*\{}" ] || return 0
+  nvm_echo() {
+    # Zsh's builtin can report success on closed stdout where GNU printf fails.
+    # Keep the legacy command for that case; temporary fd 3 is restored after
+    # the probe, and normal output still needs no external printf process.
+    if { : 3>&1; } 2>/dev/null; then
+      builtin printf '%s\n' "$*" 2>/dev/null
+    else
+      command printf '%s\n' "$*" 2>/dev/null
+    fi
+  }
+}
+
 nvm_init() {
   # Initialize NVM
   if [[ -z "$NVM_DIR" ]]; then
@@ -23,7 +76,31 @@ nvm_init() {
 
   # Load NVM
   if [ -s "$NVM_DIR/nvm.sh" ]; then
-    source "$NVM_DIR/nvm.sh"
+    local default_version current_version
+    if [ "${ENVMANAGER_NVM_FAST_STARTUP:-true}" = true ] && default_version="$(em_nvm_default_version)"; then
+      # Keep NVM and Node available immediately, but avoid its costly general
+      # alias resolver when the numeric default has exactly one installation.
+      source "$NVM_DIR/nvm.sh" --no-use || return
+      em_nvm_enable_builtin_printf
+      current_version="$(nvm current)" || :
+      case "$current_version" in
+        none|system) current_version="$default_version" ;;
+      esac
+      nvm use --silent "$current_version" >/dev/null
+    elif [ -n "${ZSH_VERSION:-}" ] && [ "${ENVMANAGER_NVM_FAST_STARTUP:-true}" = true ]; then
+      # Standard NVM invokes this handler at the end of nvm.sh. Defer that
+      # invocation only long enough to install the builtin output helper,
+      # then run the original handler with its normal startup arguments.
+      case "$(< "$NVM_DIR/nvm.sh")" in
+        *'nvm_process_parameters() {'*)
+          source "$NVM_DIR/nvm.sh" --no-use || return
+          em_nvm_enable_builtin_printf
+          nvm_process_parameters ;;
+        *) source "$NVM_DIR/nvm.sh" ;;
+      esac
+    else
+      source "$NVM_DIR/nvm.sh"
+    fi
   else
     printf 'Failed to load NVM\n'
   fi
